@@ -17,9 +17,27 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        /* Custom scrollbar for better aesthetics */
+        #laps-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #laps-container::-webkit-scrollbar-track {
+            background: #2d3748; /* bg-gray-800 */
+        }
+        #laps-container::-webkit-scrollbar-thumb {
+            background: #4a5568; /* bg-gray-600 */
+            border-radius: 4px;
+        }
+        #laps-container::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* bg-gray-500 */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Hidden elements for camera functionality -->
+    <video id="camera-stream" autoplay playsinline class="hidden w-0 h-0"></video>
+    <canvas id="camera-canvas" class="hidden w-0 h-0"></canvas>
 
     <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
         <!-- Stopwatch Display -->
@@ -45,7 +63,7 @@
         <!-- Laps Display -->
         <div id="laps-container" class="w-full max-h-64 overflow-y-auto pr-2">
             <ul id="laps-list" class="space-y-3">
-                <!-- Lap items will be injected here by JavaScript -->
+                <!-- Recorded times and photos will be injected here by JavaScript -->
             </ul>
         </div>
     </div>
@@ -57,6 +75,8 @@
         const stopButton = document.getElementById('stop-button');
         const lapButton = document.getElementById('lap-button');
         const lapsList = document.getElementById('laps-list');
+        const cameraStreamElement = document.getElementById('camera-stream');
+        const cameraCanvasElement = document.getElementById('camera-canvas');
 
         // State Variables
         let timer = null;
@@ -65,36 +85,51 @@
         let isRunning = false;
         let lapCounter = 0;
         let recordedTimes = [];
+        let cameraStream = null;
 
         // --- Event Listeners ---
-        startButton.addEventListener('click', startStopwatch);
+        startButton.addEventListener('click', () => startStopwatch());
         stopButton.addEventListener('click', stopStopwatch);
         lapButton.addEventListener('click', recordTime);
 
         // --- Core Functions ---
 
-        function startStopwatch() {
-            if (!isRunning) {
-                // Set start time based on whether it's a fresh start or a resume
-                startTime = Date.now() - elapsedTime;
-                timer = setInterval(updateDisplay, 10); // Update every 10ms for smooth display
-                isRunning = true;
-                updateButtonStates();
+        async function startStopwatch() {
+            if (isRunning) return;
+
+            // Start camera stream if not already running
+            if (!cameraStream) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    cameraStreamElement.srcObject = stream;
+                    cameraStream = stream;
+                } catch (err) {
+                    console.error("Error accessing camera:", err);
+                    // In a real app, you'd show a user-friendly modal here instead of an alert.
+                    // For this environment, we'll log the error. The record button will still work for time.
+                }
             }
+
+            // Set start time based on whether it's a fresh start or a resume
+            startTime = Date.now() - elapsedTime;
+            timer = setInterval(updateDisplay, 10);
+            isRunning = true;
+            updateButtonStates();
         }
 
         function stopStopwatch() {
             if (isRunning) {
                 clearInterval(timer);
-                // Record the final elapsed time
                 elapsedTime = Date.now() - startTime;
                 isRunning = false;
+                stopCameraStream(); // Stop camera to save battery
                 updateButtonStates();
             }
         }
         
         function resetStopwatch() {
             clearInterval(timer);
+            stopCameraStream(); // Ensure camera is off
             isRunning = false;
             elapsedTime = 0;
             startTime = 0;
@@ -109,11 +144,25 @@
             if (isRunning) {
                 lapCounter++;
                 const totalTime = Date.now() - startTime;
-                recordedTimes.push(totalTime);
+                const photoDataUrl = capturePhoto(); // Capture the photo
+
+                recordedTimes.push({ time: totalTime, image: photoDataUrl });
 
                 const lapElement = document.createElement('li');
-                lapElement.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-lg text-lg';
+                lapElement.className = 'flex items-center bg-gray-700 p-3 rounded-lg text-lg space-x-4';
                 
+                // Add image thumbnail if it was captured
+                if (photoDataUrl) {
+                    const imgElement = document.createElement('img');
+                    imgElement.src = photoDataUrl;
+                    imgElement.className = 'w-16 h-16 rounded-md object-cover flex-shrink-0';
+                    lapElement.appendChild(imgElement);
+                }
+
+                // Container for the text labels
+                const textContainer = document.createElement('div');
+                textContainer.className = 'flex-grow flex justify-between items-center';
+
                 const lapNumberSpan = document.createElement('span');
                 lapNumberSpan.className = 'font-semibold text-gray-300';
                 lapNumberSpan.textContent = `Time ${lapCounter}`;
@@ -122,15 +171,35 @@
                 lapTimeSpan.className = 'font-medium time-display';
                 lapTimeSpan.textContent = formatTime(totalTime);
 
-                lapElement.appendChild(lapNumberSpan);
-                lapElement.appendChild(lapTimeSpan);
+                textContainer.appendChild(lapNumberSpan);
+                textContainer.appendChild(lapTimeSpan);
+                lapElement.appendChild(textContainer);
 
-                // Add the new lap to the top of the list
                 lapsList.prepend(lapElement);
             }
         }
         
         // --- Helper Functions ---
+
+        function capturePhoto() {
+            if (!cameraStream || !cameraStream.active) {
+                console.warn("Camera stream is not active. Cannot capture photo.");
+                return null;
+            }
+            const context = cameraCanvasElement.getContext('2d');
+            cameraCanvasElement.width = cameraStreamElement.videoWidth;
+            cameraCanvasElement.height = cameraStreamElement.videoHeight;
+            context.drawImage(cameraStreamElement, 0, 0, cameraCanvasElement.width, cameraCanvasElement.height);
+            return cameraCanvasElement.toDataURL('image/jpeg', 0.8); // Return as 80% quality JPEG
+        }
+
+        function stopCameraStream() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                cameraStreamElement.srcObject = null;
+            }
+        }
 
         function updateDisplay() {
             const currentTime = Date.now();
@@ -158,8 +227,8 @@
         function copyTimingsToClipboard() {
             if (recordedTimes.length === 0) return;
 
-            const textToCopy = recordedTimes.map((time, index) => {
-                return `Time ${index + 1}: ${formatTime(time)}`;
+            const textToCopy = recordedTimes.map((record, index) => {
+                return `Time ${index + 1}: ${formatTime(record.time)}`;
             }).join('\n');
 
             const textArea = document.createElement('textarea');
@@ -169,6 +238,7 @@
             document.body.appendChild(textArea);
             
             textArea.select();
+            // For mobile devices
             textArea.setSelectionRange(0, 99999);
 
             try {
@@ -190,7 +260,6 @@
 
         function updateButtonStates() {
             if (isRunning) {
-                // Stopwatch is running
                 startButton.disabled = true;
                 startButton.classList.add('btn-disabled');
                 
@@ -199,8 +268,11 @@
                 
                 lapButton.disabled = false;
                 lapButton.classList.remove('btn-disabled');
+                lapButton.textContent = "Record";
+                lapButton.onclick = recordTime;
+                lapButton.classList.replace('bg-purple-600', 'bg-blue-600');
+                lapButton.classList.replace('hover:bg-purple-500', 'hover:bg-blue-500');
             } else {
-                // Stopwatch is stopped or hasn't started
                 startButton.disabled = false;
                 startButton.classList.remove('btn-disabled');
 
@@ -209,14 +281,13 @@
                    startButton.onclick = resetStopwatch;
                  } else {
                     startButton.textContent = "Start";
-                    startButton.onclick = startStopwatch;
+                    startButton.onclick = () => startStopwatch();
                  }
                 
                 stopButton.disabled = true;
                 stopButton.classList.add('btn-disabled');
 
                 if (recordedTimes.length > 0) {
-                    // Stopped and has recorded times -> change "Record" button to "Copy"
                     lapButton.disabled = false;
                     lapButton.classList.remove('btn-disabled');
                     lapButton.textContent = "Copy";
@@ -224,19 +295,12 @@
                     lapButton.classList.replace('bg-blue-600', 'bg-purple-600');
                     lapButton.classList.replace('hover:bg-blue-500', 'hover:bg-purple-500');
                 } else {
-                    // No recorded times, disable "Record" button
                     lapButton.disabled = true;
                     lapButton.classList.add('btn-disabled');
                     lapButton.textContent = "Record";
                     lapButton.onclick = recordTime;
-                    lapButton.classList.replace('bg-purple-600', 'bg-blue-600');
-                    lapButton.classList.replace('hover:bg-purple-500', 'hover:bg-blue-500');
                 }
             }
         }
     </script>
 </body>
-</html>
-
-
-
