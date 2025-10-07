@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHS Walk Run Stopwatch</title>
+    <title>PHS Walk Run Stopwatch (Optimized)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -36,7 +36,6 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
 
-    <!-- Photo Permission Modal -->
     <div id="photo-permission-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-gray-700 p-8 rounded-lg text-center shadow-2xl max-w-sm w-full">
             <h2 class="text-xl font-bold mb-6">Capture Photos?</h2>
@@ -48,23 +47,19 @@
         </div>
     </div>
 
-    <!-- Hidden canvas for capturing photos -->
     <canvas id="camera-canvas" class="hidden w-0 h-0"></canvas>
 
     <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
-        <!-- Camera Preview Frame -->
         <div id="camera-preview-container" class="mb-4 rounded-lg overflow-hidden hidden border-2 border-gray-600 shadow-lg">
              <video id="camera-stream" autoplay playsinline class="w-full h-auto block"></video>
         </div>
 
-        <!-- Stopwatch Display -->
         <div class="text-center mb-8">
             <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold time-display tracking-wider" id="stopwatch-display">
                 00:00:00<span class="text-xl sm:text-2xl md:text-3xl text-gray-400">.00</span>
             </h1>
         </div>
 
-        <!-- Control Buttons -->
         <div class="flex justify-center items-center space-x-4 mb-8">
             <button id="start-button" class="w-24 h-24 rounded-full bg-green-600 hover:bg-green-500 text-white text-xl font-semibold focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out flex items-center justify-center shadow-lg">
                 Start
@@ -77,14 +72,11 @@
             </button>
         </div>
 
-        <!-- Laps Display -->
         <div id="laps-container" class="w-full max-h-64 overflow-y-auto pr-2">
             <ul id="laps-list" class="space-y-3">
-                <!-- Recorded times and photos will be injected here by JavaScript -->
-            </ul>
+                </ul>
         </div>
 
-        <!-- Download Buttons Container -->
         <div id="download-container" class="text-center mt-6 hidden flex flex-col sm:flex-row justify-center gap-4">
              <button id="download-photos-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-300 ease-in-out shadow-lg">
                 Download Photos
@@ -121,7 +113,6 @@
         let lapCounter = 0;
         let recordedTimes = [];
         let cameraStream = null;
-        let audioCtx = null; // For generating the beep sound
         let capturePhotos = false; // User's choice for capturing photos
 
         // --- Event Listeners ---
@@ -145,7 +136,7 @@
         async function startStopwatch() {
             if (isRunning) return;
 
-            // FIX: Immediately disable the start button to prevent double-clicks
+            // Immediately disable the start button to prevent double-clicks
             // while waiting for camera permission.
             startButton.disabled = true;
             startButton.classList.add('btn-disabled');
@@ -195,7 +186,6 @@
 
         function recordTime() {
             if (isRunning) {
-                playBeep(); // Play the beep sound
                 // Immediately disable the button to prevent double-clicks.
                 lapButton.disabled = true;
                 lapButton.classList.add('btn-disabled');
@@ -207,18 +197,8 @@
                 recordedTimes.push({ time: totalTime, image: photoDataUrl });
 
                 const lapElement = document.createElement('li');
-                lapElement.className = 'flex items-center bg-gray-700 p-3 rounded-lg text-lg space-x-4';
+                lapElement.className = 'flex items-center justify-between bg-gray-700 p-3 rounded-lg text-lg';
                 
-                if (photoDataUrl) {
-                    const imgElement = document.createElement('img');
-                    imgElement.src = photoDataUrl;
-                    imgElement.className = 'w-16 h-16 rounded-md object-cover flex-shrink-0';
-                    lapElement.appendChild(imgElement);
-                }
-
-                const textContainer = document.createElement('div');
-                textContainer.className = 'flex-grow flex justify-between items-center';
-
                 const lapNumberSpan = document.createElement('span');
                 lapNumberSpan.className = 'font-semibold text-gray-300';
                 lapNumberSpan.textContent = `Time ${lapCounter}`;
@@ -227,9 +207,8 @@
                 lapTimeSpan.className = 'font-medium time-display';
                 lapTimeSpan.textContent = formatTime(totalTime);
 
-                textContainer.appendChild(lapNumberSpan);
-                textContainer.appendChild(lapTimeSpan);
-                lapElement.appendChild(textContainer);
+                lapElement.appendChild(lapNumberSpan);
+                lapElement.appendChild(lapTimeSpan);
 
                 lapsList.prepend(lapElement);
 
@@ -244,30 +223,6 @@
         }
         
         // --- Helper Functions ---
-
-        function playBeep() {
-            // Initialize AudioContext on the first user interaction to comply with browser policies
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A nice, clear pitch (A5)
-            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); // Not too loud
-
-            oscillator.start(audioCtx.currentTime);
-            // Stop the sound after a very short duration
-            oscillator.stop(audioCtx.currentTime + 0.1); 
-        }
 
         function capturePhoto() {
             if (!cameraStream || !cameraStream.active) {
@@ -389,7 +344,8 @@
                 document.execCommand('copy');
                 lapButton.textContent = 'Copied!';
                 setTimeout(() => { lapButton.textContent = 'Copy'; }, 2000);
-            } catch (err) {
+            } catch (err)
+ {
                 console.error('Failed to copy timings: ', err);
                 lapButton.textContent = 'Error!';
                  setTimeout(() => { lapButton.textContent = 'Copy'; }, 2000);
@@ -468,4 +424,3 @@
     </script>
 </body>
 </html>
-
