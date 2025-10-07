@@ -36,6 +36,7 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
 
+    <!-- Photo Permission Modal -->
     <div id="photo-permission-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-gray-700 p-8 rounded-lg text-center shadow-2xl max-w-sm w-full">
             <h2 class="text-xl font-bold mb-6">Capture Photos?</h2>
@@ -47,19 +48,23 @@
         </div>
     </div>
 
+    <!-- Hidden canvas for capturing photos -->
     <canvas id="camera-canvas" class="hidden w-0 h-0"></canvas>
 
     <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+        <!-- Camera Preview Frame -->
         <div id="camera-preview-container" class="mb-4 rounded-lg overflow-hidden hidden border-2 border-gray-600 shadow-lg">
              <video id="camera-stream" autoplay playsinline class="w-full h-auto block"></video>
         </div>
 
+        <!-- Stopwatch Display -->
         <div class="text-center mb-8">
             <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold time-display tracking-wider" id="stopwatch-display">
                 00:00:00<span class="text-xl sm:text-2xl md:text-3xl text-gray-400">.00</span>
             </h1>
         </div>
 
+        <!-- Control Buttons -->
         <div class="flex justify-center items-center space-x-4 mb-8">
             <button id="start-button" class="w-24 h-24 rounded-full bg-green-600 hover:bg-green-500 text-white text-xl font-semibold focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out flex items-center justify-center shadow-lg">
                 Start
@@ -72,11 +77,14 @@
             </button>
         </div>
 
+        <!-- Laps Display -->
         <div id="laps-container" class="w-full max-h-64 overflow-y-auto pr-2">
             <ul id="laps-list" class="space-y-3">
-                </ul>
+                <!-- Recorded times will be injected here by JavaScript -->
+            </ul>
         </div>
 
+        <!-- Download Buttons Container -->
         <div id="download-container" class="text-center mt-6 hidden flex flex-col sm:flex-row justify-center gap-4">
              <button id="download-photos-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-300 ease-in-out shadow-lg">
                 Download Photos
@@ -186,10 +194,6 @@
 
         function recordTime() {
             if (isRunning) {
-                // Immediately disable the button to prevent double-clicks.
-                lapButton.disabled = true;
-                lapButton.classList.add('btn-disabled');
-                
                 lapCounter++;
                 const totalTime = Date.now() - startTime;
                 const photoDataUrl = capturePhotos ? capturePhoto() : null;
@@ -211,14 +215,6 @@
                 lapElement.appendChild(lapTimeSpan);
 
                 lapsList.prepend(lapElement);
-
-                // Re-enable the button after a short delay to prevent accidental double taps
-                setTimeout(() => {
-                    if (isRunning) { // Check if still running before re-enabling
-                        lapButton.disabled = false;
-                        lapButton.classList.remove('btn-disabled');
-                    }
-                }, 400);
             }
         }
         
@@ -367,7 +363,6 @@
                 
                 lapButton.disabled = false;
                 lapButton.classList.remove('btn-disabled');
-                lapButton.classList.add('scale-110', 'transform'); // Make button bigger
                 lapButton.textContent = "Record";
                 lapButton.onclick = recordTime;
                 lapButton.classList.replace('bg-purple-600', 'bg-blue-600');
@@ -376,7 +371,6 @@
                 cameraPreviewContainer.classList.add('hidden');
                 startButton.disabled = false;
                 startButton.classList.remove('btn-disabled');
-                lapButton.classList.remove('scale-110', 'transform'); // Return to normal size
 
                 if (elapsedTime > 0) {
                    startButton.textContent = "Reset";
@@ -424,3 +418,4 @@
     </script>
 </body>
 </html>
+
