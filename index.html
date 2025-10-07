@@ -68,10 +68,13 @@
             </ul>
         </div>
 
-        <!-- Download Button Container -->
-        <div id="download-container" class="text-center mt-6 hidden">
-             <button id="download-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-300 ease-in-out shadow-lg">
+        <!-- Download Buttons Container -->
+        <div id="download-container" class="text-center mt-6 hidden flex flex-col sm:flex-row justify-center gap-4">
+             <button id="download-photos-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-300 ease-in-out shadow-lg">
                 Download Photos
+            </button>
+            <button id="download-timings-button" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-400 transition-all duration-300 ease-in-out shadow-lg">
+                Download Timings
             </button>
         </div>
     </div>
@@ -86,7 +89,8 @@
         const cameraStreamElement = document.getElementById('camera-stream');
         const cameraCanvasElement = document.getElementById('camera-canvas');
         const downloadContainer = document.getElementById('download-container');
-        const downloadButton = document.getElementById('download-button');
+        const downloadPhotosButton = document.getElementById('download-photos-button');
+        const downloadTimingsButton = document.getElementById('download-timings-button');
 
         // State Variables
         let timer = null;
@@ -96,13 +100,12 @@
         let lapCounter = 0;
         let recordedTimes = [];
         let cameraStream = null;
+        let audioCtx = null; // For generating the beep sound
 
         // --- Event Listeners ---
-        // REMOVED: startButton.addEventListener('click', () => startStopwatch());
-        // FIX: The line below was causing the double-click. It has been removed.
-        // lapButton.addEventListener('click', recordTime); 
         stopButton.addEventListener('click', stopStopwatch);
-        downloadButton.addEventListener('click', downloadPhotosAsZip);
+        downloadPhotosButton.addEventListener('click', downloadPhotosAsZip);
+        downloadTimingsButton.addEventListener('click', downloadTimingsAsTxt);
 
         // --- Core Functions ---
 
@@ -155,6 +158,7 @@
 
         function recordTime() {
             if (isRunning) {
+                playBeep(); // Play the beep sound
                 // Immediately disable the button to prevent double-clicks.
                 lapButton.disabled = true;
                 lapButton.classList.add('btn-disabled');
@@ -204,6 +208,30 @@
         
         // --- Helper Functions ---
 
+        function playBeep() {
+            // Initialize AudioContext on the first user interaction to comply with browser policies
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A nice, clear pitch (A5)
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); // Not too loud
+
+            oscillator.start(audioCtx.currentTime);
+            // Stop the sound after a very short duration
+            oscillator.stop(audioCtx.currentTime + 0.1); 
+        }
+
         function capturePhoto() {
             if (!cameraStream || !cameraStream.active) {
                 console.warn("Camera stream is not active. Cannot capture photo.");
@@ -250,19 +278,21 @@
         async function downloadPhotosAsZip() {
             const photosToZip = recordedTimes.filter(r => r.image);
             if (photosToZip.length === 0) {
-                downloadButton.textContent = 'No Photos!';
-                setTimeout(() => { downloadButton.textContent = 'Download Photos'; }, 2000);
+                downloadPhotosButton.textContent = 'No Photos!';
+                setTimeout(() => { downloadPhotosButton.textContent = 'Download Photos'; }, 2000);
                 return;
             }
 
-            downloadButton.textContent = 'Zipping...';
-            downloadButton.disabled = true;
+            downloadPhotosButton.textContent = 'Zipping...';
+            downloadPhotosButton.disabled = true;
             
             try {
                 const zip = new JSZip();
                 photosToZip.forEach((record, index) => {
+                    // Use a consistent numbering based on overall recorded times
+                    const recordIndex = recordedTimes.findIndex(r => r === record);
                     const base64Data = record.image.split(',')[1];
-                    zip.file(`Time_${index + 1}.jpg`, base64Data, { base64: true });
+                    zip.file(`Time_${recordIndex + 1}.jpg`, base64Data, { base64: true });
                 });
 
                 const content = await zip.generateAsync({ type: "blob" });
@@ -274,16 +304,32 @@
                 link.click();
                 document.body.removeChild(link);
 
-                downloadButton.textContent = 'Downloaded!';
+                downloadPhotosButton.textContent = 'Downloaded!';
             } catch (err) {
                 console.error("Error creating zip file:", err);
-                downloadButton.textContent = 'Error!';
+                downloadPhotosButton.textContent = 'Error!';
             } finally {
                 setTimeout(() => {
-                    downloadButton.textContent = 'Download Photos';
-                    downloadButton.disabled = false;
+                    downloadPhotosButton.textContent = 'Download Photos';
+                    downloadPhotosButton.disabled = false;
                 }, 2000);
             }
+        }
+        
+        function downloadTimingsAsTxt() {
+            if (recordedTimes.length === 0) return;
+
+            const textToSave = recordedTimes.map((record, index) => {
+                return `Time ${index + 1}: ${formatTime(record.time)}`;
+            }).join('\n');
+
+            const blob = new Blob([textToSave], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'stopwatch_timings.txt';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function copyTimingsToClipboard() {
@@ -325,6 +371,7 @@
                 
                 lapButton.disabled = false;
                 lapButton.classList.remove('btn-disabled');
+                lapButton.classList.add('scale-110', 'transform'); // Make button bigger
                 lapButton.textContent = "Record";
                 lapButton.onclick = recordTime;
                 lapButton.classList.replace('bg-purple-600', 'bg-blue-600');
@@ -332,6 +379,7 @@
             } else {
                 startButton.disabled = false;
                 startButton.classList.remove('btn-disabled');
+                lapButton.classList.remove('scale-110', 'transform'); // Return to normal size
 
                 if (elapsedTime > 0) {
                    startButton.textContent = "Reset";
@@ -359,9 +407,16 @@
                 }
             }
 
-            // Show or hide the download container
-            if (!isRunning && recordedTimes.some(r => r.image)) {
+            // Show/hide download buttons
+            if (!isRunning && recordedTimes.length > 0) {
                 downloadContainer.classList.remove('hidden');
+                const hasPhotos = recordedTimes.some(r => r.image);
+                downloadPhotosButton.disabled = !hasPhotos;
+                if (hasPhotos) {
+                    downloadPhotosButton.classList.remove('btn-disabled');
+                } else {
+                    downloadPhotosButton.classList.add('btn-disabled');
+                }
             } else {
                 downloadContainer.classList.add('hidden');
             }
@@ -372,5 +427,6 @@
     </script>
 </body>
 </html>
+
 
 
