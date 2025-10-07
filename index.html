@@ -36,11 +36,15 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
 
-    <!-- Hidden elements for camera functionality -->
-    <video id="camera-stream" autoplay playsinline class="hidden w-0 h-0"></video>
+    <!-- Hidden canvas for capturing photos -->
     <canvas id="camera-canvas" class="hidden w-0 h-0"></canvas>
 
     <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+        <!-- Camera Preview Frame -->
+        <div id="camera-preview-container" class="mb-4 rounded-lg overflow-hidden hidden border-2 border-gray-600 shadow-lg">
+             <video id="camera-stream" autoplay playsinline class="w-full h-auto block"></video>
+        </div>
+
         <!-- Stopwatch Display -->
         <div class="text-center mb-8">
             <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold time-display tracking-wider" id="stopwatch-display">
@@ -88,6 +92,7 @@
         const lapsList = document.getElementById('laps-list');
         const cameraStreamElement = document.getElementById('camera-stream');
         const cameraCanvasElement = document.getElementById('camera-canvas');
+        const cameraPreviewContainer = document.getElementById('camera-preview-container');
         const downloadContainer = document.getElementById('download-container');
         const downloadPhotosButton = document.getElementById('download-photos-button');
         const downloadTimingsButton = document.getElementById('download-timings-button');
@@ -363,6 +368,9 @@
 
         function updateButtonStates() {
             if (isRunning) {
+                if(cameraStream) {
+                    cameraPreviewContainer.classList.remove('hidden');
+                }
                 startButton.disabled = true;
                 startButton.classList.add('btn-disabled');
                 
@@ -377,6 +385,7 @@
                 lapButton.classList.replace('bg-purple-600', 'bg-blue-600');
                 lapButton.classList.replace('hover:bg-purple-500', 'hover:bg-blue-500');
             } else {
+                cameraPreviewContainer.classList.add('hidden');
                 startButton.disabled = false;
                 startButton.classList.remove('btn-disabled');
                 lapButton.classList.remove('scale-110', 'transform'); // Return to normal size
