@@ -6,6 +6,7 @@
     <title>Continuous Stopwatch</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -66,6 +67,13 @@
                 <!-- Recorded times and photos will be injected here by JavaScript -->
             </ul>
         </div>
+
+        <!-- Download Button Container -->
+        <div id="download-container" class="text-center mt-6 hidden">
+             <button id="download-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-300 ease-in-out shadow-lg">
+                Download Photos
+            </button>
+        </div>
     </div>
 
     <script>
@@ -77,6 +85,8 @@
         const lapsList = document.getElementById('laps-list');
         const cameraStreamElement = document.getElementById('camera-stream');
         const cameraCanvasElement = document.getElementById('camera-canvas');
+        const downloadContainer = document.getElementById('download-container');
+        const downloadButton = document.getElementById('download-button');
 
         // State Variables
         let timer = null;
@@ -88,16 +98,22 @@
         let cameraStream = null;
 
         // --- Event Listeners ---
-        startButton.addEventListener('click', () => startStopwatch());
+        // REMOVED: startButton.addEventListener('click', () => startStopwatch());
+        // FIX: The line below was causing the double-click. It has been removed.
+        // lapButton.addEventListener('click', recordTime); 
         stopButton.addEventListener('click', stopStopwatch);
-        lapButton.addEventListener('click', recordTime);
+        downloadButton.addEventListener('click', downloadPhotosAsZip);
 
         // --- Core Functions ---
 
         async function startStopwatch() {
             if (isRunning) return;
 
-            // Start camera stream if not already running
+            // FIX: Immediately disable the start button to prevent double-clicks
+            // while waiting for camera permission.
+            startButton.disabled = true;
+            startButton.classList.add('btn-disabled');
+
             if (!cameraStream) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -105,12 +121,9 @@
                     cameraStream = stream;
                 } catch (err) {
                     console.error("Error accessing camera:", err);
-                    // In a real app, you'd show a user-friendly modal here instead of an alert.
-                    // For this environment, we'll log the error. The record button will still work for time.
                 }
             }
 
-            // Set start time based on whether it's a fresh start or a resume
             startTime = Date.now() - elapsedTime;
             timer = setInterval(updateDisplay, 10);
             isRunning = true;
@@ -122,14 +135,14 @@
                 clearInterval(timer);
                 elapsedTime = Date.now() - startTime;
                 isRunning = false;
-                stopCameraStream(); // Stop camera to save battery
+                stopCameraStream();
                 updateButtonStates();
             }
         }
         
         function resetStopwatch() {
             clearInterval(timer);
-            stopCameraStream(); // Ensure camera is off
+            stopCameraStream();
             isRunning = false;
             elapsedTime = 0;
             startTime = 0;
@@ -142,16 +155,19 @@
 
         function recordTime() {
             if (isRunning) {
+                // Immediately disable the button to prevent double-clicks.
+                lapButton.disabled = true;
+                lapButton.classList.add('btn-disabled');
+                
                 lapCounter++;
                 const totalTime = Date.now() - startTime;
-                const photoDataUrl = capturePhoto(); // Capture the photo
+                const photoDataUrl = capturePhoto();
 
                 recordedTimes.push({ time: totalTime, image: photoDataUrl });
 
                 const lapElement = document.createElement('li');
                 lapElement.className = 'flex items-center bg-gray-700 p-3 rounded-lg text-lg space-x-4';
                 
-                // Add image thumbnail if it was captured
                 if (photoDataUrl) {
                     const imgElement = document.createElement('img');
                     imgElement.src = photoDataUrl;
@@ -159,7 +175,6 @@
                     lapElement.appendChild(imgElement);
                 }
 
-                // Container for the text labels
                 const textContainer = document.createElement('div');
                 textContainer.className = 'flex-grow flex justify-between items-center';
 
@@ -176,6 +191,14 @@
                 lapElement.appendChild(textContainer);
 
                 lapsList.prepend(lapElement);
+
+                // Re-enable the button after a short delay to prevent accidental double taps
+                setTimeout(() => {
+                    if (isRunning) { // Check if still running before re-enabling
+                        lapButton.disabled = false;
+                        lapButton.classList.remove('btn-disabled');
+                    }
+                }, 400);
             }
         }
         
@@ -190,7 +213,7 @@
             cameraCanvasElement.width = cameraStreamElement.videoWidth;
             cameraCanvasElement.height = cameraStreamElement.videoHeight;
             context.drawImage(cameraStreamElement, 0, 0, cameraCanvasElement.width, cameraCanvasElement.height);
-            return cameraCanvasElement.toDataURL('image/jpeg', 0.8); // Return as 80% quality JPEG
+            return cameraCanvasElement.toDataURL('image/jpeg', 0.8);
         }
 
         function stopCameraStream() {
@@ -224,6 +247,45 @@
             return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds)}`;
         }
 
+        async function downloadPhotosAsZip() {
+            const photosToZip = recordedTimes.filter(r => r.image);
+            if (photosToZip.length === 0) {
+                downloadButton.textContent = 'No Photos!';
+                setTimeout(() => { downloadButton.textContent = 'Download Photos'; }, 2000);
+                return;
+            }
+
+            downloadButton.textContent = 'Zipping...';
+            downloadButton.disabled = true;
+            
+            try {
+                const zip = new JSZip();
+                photosToZip.forEach((record, index) => {
+                    const base64Data = record.image.split(',')[1];
+                    zip.file(`Time_${index + 1}.jpg`, base64Data, { base64: true });
+                });
+
+                const content = await zip.generateAsync({ type: "blob" });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = "stopwatch_photos.zip";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                downloadButton.textContent = 'Downloaded!';
+            } catch (err) {
+                console.error("Error creating zip file:", err);
+                downloadButton.textContent = 'Error!';
+            } finally {
+                setTimeout(() => {
+                    downloadButton.textContent = 'Download Photos';
+                    downloadButton.disabled = false;
+                }, 2000);
+            }
+        }
+
         function copyTimingsToClipboard() {
             if (recordedTimes.length === 0) return;
 
@@ -238,21 +300,16 @@
             document.body.appendChild(textArea);
             
             textArea.select();
-            // For mobile devices
             textArea.setSelectionRange(0, 99999);
 
             try {
                 document.execCommand('copy');
                 lapButton.textContent = 'Copied!';
-                setTimeout(() => {
-                    lapButton.textContent = 'Copy';
-                }, 2000);
+                setTimeout(() => { lapButton.textContent = 'Copy'; }, 2000);
             } catch (err) {
                 console.error('Failed to copy timings: ', err);
                 lapButton.textContent = 'Error!';
-                 setTimeout(() => {
-                    lapButton.textContent = 'Copy';
-                }, 2000);
+                 setTimeout(() => { lapButton.textContent = 'Copy'; }, 2000);
             }
 
             document.body.removeChild(textArea);
@@ -301,6 +358,19 @@
                     lapButton.onclick = recordTime;
                 }
             }
+
+            // Show or hide the download container
+            if (!isRunning && recordedTimes.some(r => r.image)) {
+                downloadContainer.classList.remove('hidden');
+            } else {
+                downloadContainer.classList.add('hidden');
+            }
         }
+        
+        // Set initial button state on page load
+        updateButtonStates();
     </script>
 </body>
+</html>
+
+
