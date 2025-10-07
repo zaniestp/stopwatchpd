@@ -17,3 +17,4 @@
   completing the race. It also allow the user to download the results and pictures
   for record purpose.
   
+7-oct-2025
