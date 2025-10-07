@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuous Stopwatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .time-display {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+        <!-- Stopwatch Display -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold time-display tracking-wider" id="stopwatch-display">
+                00:00:00<span class="text-xl sm:text-2xl md:text-3xl text-gray-400">.00</span>
+            </h1>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="flex justify-center items-center space-x-4 mb-8">
+            <button id="start-button" class="w-24 h-24 rounded-full bg-green-600 hover:bg-green-500 text-white text-xl font-semibold focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out flex items-center justify-center shadow-lg">
+                Start
+            </button>
+            <button id="lap-button" class="w-24 h-24 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xl font-semibold focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-300 ease-in-out flex items-center justify-center shadow-lg btn-disabled" disabled>
+                Record
+            </button>
+            <button id="stop-button" class="w-24 h-24 rounded-full bg-red-600 hover:bg-red-500 text-white text-xl font-semibold focus:outline-none focus:ring-4 focus:ring-red-400 transition-all duration-300 ease-in-out flex items-center justify-center shadow-lg btn-disabled" disabled>
+                Stop
+            </button>
+        </div>
+
+        <!-- Laps Display -->
+        <div id="laps-container" class="w-full max-h-64 overflow-y-auto pr-2">
+            <ul id="laps-list" class="space-y-3">
+                <!-- Lap items will be injected here by JavaScript -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const stopwatchDisplay = document.getElementById('stopwatch-display');
+        const startButton = document.getElementById('start-button');
+        const stopButton = document.getElementById('stop-button');
+        const lapButton = document.getElementById('lap-button');
+        const lapsList = document.getElementById('laps-list');
+
+        // State Variables
+        let timer = null;
+        let startTime = 0;
+        let elapsedTime = 0;
+        let isRunning = false;
+        let lapCounter = 0;
+        let recordedTimes = [];
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', startStopwatch);
+        stopButton.addEventListener('click', stopStopwatch);
+        lapButton.addEventListener('click', recordTime);
+
+        // --- Core Functions ---
+
+        function startStopwatch() {
+            if (!isRunning) {
+                // Set start time based on whether it's a fresh start or a resume
+                startTime = Date.now() - elapsedTime;
+                timer = setInterval(updateDisplay, 10); // Update every 10ms for smooth display
+                isRunning = true;
+                updateButtonStates();
+            }
+        }
+
+        function stopStopwatch() {
+            if (isRunning) {
+                clearInterval(timer);
+                // Record the final elapsed time
+                elapsedTime = Date.now() - startTime;
+                isRunning = false;
+                updateButtonStates();
+            }
+        }
+        
+        function resetStopwatch() {
+            clearInterval(timer);
+            isRunning = false;
+            elapsedTime = 0;
+            startTime = 0;
+            lapCounter = 0;
+            recordedTimes = [];
+            stopwatchDisplay.innerHTML = '00:00:00<span class="text-xl sm:text-2xl md:text-3xl text-gray-400">.00</span>';
+            lapsList.innerHTML = '';
+            updateButtonStates();
+        }
+
+        function recordTime() {
+            if (isRunning) {
+                lapCounter++;
+                const totalTime = Date.now() - startTime;
+                recordedTimes.push(totalTime);
+
+                const lapElement = document.createElement('li');
+                lapElement.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-lg text-lg';
+                
+                const lapNumberSpan = document.createElement('span');
+                lapNumberSpan.className = 'font-semibold text-gray-300';
+                lapNumberSpan.textContent = `Time ${lapCounter}`;
+                
+                const lapTimeSpan = document.createElement('span');
+                lapTimeSpan.className = 'font-medium time-display';
+                lapTimeSpan.textContent = formatTime(totalTime);
+
+                lapElement.appendChild(lapNumberSpan);
+                lapElement.appendChild(lapTimeSpan);
+
+                // Add the new lap to the top of the list
+                lapsList.prepend(lapElement);
+            }
+        }
+        
+        // --- Helper Functions ---
+
+        function updateDisplay() {
+            const currentTime = Date.now();
+            elapsedTime = currentTime - startTime;
+            stopwatchDisplay.innerHTML = formatTime(elapsedTime, true);
+        }
+        
+        function formatTime(timeInMillis, showMilliseconds = false) {
+            let totalMilliseconds = timeInMillis;
+            let hours = Math.floor(totalMilliseconds / 3600000);
+            totalMilliseconds %= 3600000;
+            let minutes = Math.floor(totalMilliseconds / 60000);
+            totalMilliseconds %= 60000;
+            let seconds = Math.floor(totalMilliseconds / 1000);
+            let milliseconds = Math.floor((totalMilliseconds % 1000) / 10);
+
+            const pad = (num) => num.toString().padStart(2, '0');
+
+            if (showMilliseconds) {
+                return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}<span class="text-xl sm:text-2xl md:text-3xl text-gray-400">.${pad(milliseconds)}</span>`;
+            }
+            return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds)}`;
+        }
+
+        function copyTimingsToClipboard() {
+            if (recordedTimes.length === 0) return;
+
+            const textToCopy = recordedTimes.map((time, index) => {
+                return `Time ${index + 1}: ${formatTime(time)}`;
+            }).join('\n');
+
+            const textArea = document.createElement('textarea');
+            textArea.value = textToCopy;
+            textArea.style.position = 'absolute';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            
+            textArea.select();
+            textArea.setSelectionRange(0, 99999);
+
+            try {
+                document.execCommand('copy');
+                lapButton.textContent = 'Copied!';
+                setTimeout(() => {
+                    lapButton.textContent = 'Copy';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy timings: ', err);
+                lapButton.textContent = 'Error!';
+                 setTimeout(() => {
+                    lapButton.textContent = 'Copy';
+                }, 2000);
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        function updateButtonStates() {
+            if (isRunning) {
+                // Stopwatch is running
+                startButton.disabled = true;
+                startButton.classList.add('btn-disabled');
+                
+                stopButton.disabled = false;
+                stopButton.classList.remove('btn-disabled');
+                
+                lapButton.disabled = false;
+                lapButton.classList.remove('btn-disabled');
+            } else {
+                // Stopwatch is stopped or hasn't started
+                startButton.disabled = false;
+                startButton.classList.remove('btn-disabled');
+
+                if (elapsedTime > 0) {
+                   startButton.textContent = "Reset";
+                   startButton.onclick = resetStopwatch;
+                 } else {
+                    startButton.textContent = "Start";
+                    startButton.onclick = startStopwatch;
+                 }
+                
+                stopButton.disabled = true;
+                stopButton.classList.add('btn-disabled');
+
+                if (recordedTimes.length > 0) {
+                    // Stopped and has recorded times -> change "Record" button to "Copy"
+                    lapButton.disabled = false;
+                    lapButton.classList.remove('btn-disabled');
+                    lapButton.textContent = "Copy";
+                    lapButton.onclick = copyTimingsToClipboard;
+                    lapButton.classList.replace('bg-blue-600', 'bg-purple-600');
+                    lapButton.classList.replace('hover:bg-blue-500', 'hover:bg-purple-500');
+                } else {
+                    // No recorded times, disable "Record" button
+                    lapButton.disabled = true;
+                    lapButton.classList.add('btn-disabled');
+                    lapButton.textContent = "Record";
+                    lapButton.onclick = recordTime;
+                    lapButton.classList.replace('bg-purple-600', 'bg-blue-600');
+                    lapButton.classList.replace('hover:bg-purple-500', 'hover:bg-blue-500');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
+
