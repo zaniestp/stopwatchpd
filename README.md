@@ -13,7 +13,7 @@
   ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝   ╚═╝   ╚═╝
 ```
 
-  *********************************************************
+*********************************************************
 
   This stopwatch app allows the user to capture as many timings as needed that runners 
   completing the race. It also allow the user to download the results and pictures
