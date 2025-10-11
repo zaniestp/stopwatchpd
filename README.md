@@ -1,3 +1,5 @@
+This app is co-developed with Presbyterian High School.
+
 *********************************************************
 ```text
       /\_/\
