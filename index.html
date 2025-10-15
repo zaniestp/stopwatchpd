@@ -18,81 +18,168 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
-        /* Custom scrollbar for better aesthetics */
         #laps-container::-webkit-scrollbar {
             width: 8px;
         }
         #laps-container::-webkit-scrollbar-track {
-            background: #2d3748; /* bg-gray-800 */
+            background: #2d3748;
         }
         #laps-container::-webkit-scrollbar-thumb {
-            background: #4a5568; /* bg-gray-600 */
+            background: #4a5568;
             border-radius: 4px;
         }
         #laps-container::-webkit-scrollbar-thumb:hover {
-            background: #718096; /* bg-gray-500 */
+            background: #718096;
+        }
+        .pulse-ring {
+            animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .button-press {
+            transform: scale(0.95);
+        }
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
         }
     </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
 
     <!-- Photo Permission Modal -->
-    <div id="photo-permission-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-gray-700 p-8 rounded-lg text-center shadow-2xl max-w-sm w-full">
-            <h2 class="text-xl font-bold mb-6">Capture Photos?</h2>
-            <p class="mb-6 text-gray-300">Do you want to capture a photo with each recorded time?</p>
-            <div class="flex justify-center gap-4">
-                <button id="confirm-photo-yes" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300">Yes</button>
-                <button id="confirm-photo-no" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-red-400 transition-all duration-300">No</button>
+    <div id="photo-permission-modal" class="fixed inset-0 bg-black bg-opacity-75 modal-backdrop flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 p-8 rounded-2xl text-center shadow-2xl max-w-md w-full border border-gray-700">
+            <div class="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
             </div>
+            <h2 class="text-2xl font-bold mb-3">Capture Photos?</h2>
+            <p class="mb-6 text-gray-300 text-sm leading-relaxed">Would you like to capture a photo with each recorded time? This requires camera access.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-3">
+                <button id="confirm-photo-yes" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-3 px-8 rounded-lg focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-200 active:scale-95">
+                    Yes, Enable Camera
+                </button>
+                <button id="confirm-photo-no" class="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-8 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-400 transition-all duration-200 active:scale-95">
+                    No, Skip Photos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Permission Error Modal -->
+    <div id="camera-error-modal" class="fixed inset-0 bg-black bg-opacity-75 modal-backdrop flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl text-center shadow-2xl max-w-md w-full border border-gray-700">
+            <div class="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold mb-3">Camera Access Denied</h2>
+            <p class="mb-6 text-gray-300 text-sm leading-relaxed">Unable to access camera. The stopwatch will continue without photo capture.</p>
+            <button id="close-camera-error" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-8 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-200 active:scale-95">
+                Continue
+            </button>
         </div>
     </div>
 
     <!-- Hidden canvas for capturing photos -->
     <canvas id="camera-canvas" class="hidden w-0 h-0"></canvas>
 
-    <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+    <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-gray-700">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-xl font-bold text-gray-300">PHS Walk Run Timer</h1>
+        </div>
+
         <!-- Camera Preview Frame -->
-        <div id="camera-preview-container" class="mb-4 rounded-lg overflow-hidden hidden border-2 border-gray-600 shadow-lg">
-             <video id="camera-stream" autoplay playsinline class="w-full h-auto block"></video>
+        <div id="camera-preview-container" class="mb-6 rounded-xl overflow-hidden hidden border-2 border-green-500 shadow-lg relative">
+            <video id="camera-stream" autoplay playsinline class="w-full h-auto block"></video>
+            <div class="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 pulse-ring">
+                <span class="w-2 h-2 bg-white rounded-full"></span>
+                REC
+            </div>
         </div>
 
         <!-- Stopwatch Display -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold time-display tracking-wider" id="stopwatch-display">
-                00:00:00<span class="text-xl sm:text-2xl md:text-3xl text-gray-400">.00</span>
+        <div class="text-center mb-8 bg-gray-900 rounded-xl p-6 border border-gray-700">
+            <h1 class="text-5xl sm:text-6xl font-bold time-display tracking-wider flex items-baseline justify-center" id="stopwatch-display">
+                <span>00:00:00</span><span class="text-3xl sm:text-4xl text-gray-500">.00</span>
             </h1>
         </div>
 
         <!-- Control Buttons -->
-        <div class="flex justify-center items-center space-x-4 mb-8">
-            <button id="start-button" class="w-24 h-24 rounded-full bg-green-600 hover:bg-green-500 text-white text-xl font-semibold focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out flex items-center justify-center shadow-lg">
+        <div class="flex justify-center items-center gap-4 mb-8">
+            <button id="start-button" class="w-24 h-24 rounded-full bg-green-600 hover:bg-green-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl">
                 Start
             </button>
-            <button id="lap-button" class="w-24 h-24 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xl font-semibold focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-300 ease-in-out flex items-center justify-center shadow-lg btn-disabled" disabled>
+            <button id="lap-button" class="w-28 h-28 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl btn-disabled" disabled>
                 Record
             </button>
-            <button id="stop-button" class="w-24 h-24 rounded-full bg-red-600 hover:bg-red-500 text-white text-xl font-semibold focus:outline-none focus:ring-4 focus:ring-red-400 transition-all duration-300 ease-in-out flex items-center justify-center shadow-lg btn-disabled" disabled>
+            <button id="stop-button" class="w-24 h-24 rounded-full bg-red-600 hover:bg-red-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-red-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl btn-disabled" disabled>
                 Stop
             </button>
         </div>
 
+        <!-- Stats Summary -->
+        <div id="stats-summary" class="hidden mb-6 grid grid-cols-2 gap-3">
+            <div class="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Total Times</div>
+                <div id="total-times" class="text-2xl font-bold text-white">0</div>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Last Time</div>
+                <div id="last-time" class="text-lg font-semibold text-white time-display">--:--:--.--</div>
+            </div>
+        </div>
+
         <!-- Laps Display -->
-        <div id="laps-container" class="w-full max-h-64 overflow-y-auto pr-2">
-            <ul id="laps-list" class="space-y-3">
+        <div id="laps-container" class="w-full max-h-80 overflow-y-auto pr-2">
+            <div id="empty-state" class="text-center py-12 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-sm">No times recorded yet</p>
+            </div>
+            <ul id="laps-list" class="space-y-2">
                 <!-- Recorded times will be injected here by JavaScript -->
             </ul>
         </div>
 
         <!-- Download Buttons Container -->
-        <div id="download-container" class="text-center mt-6 hidden flex flex-col sm:flex-row justify-center gap-4">
-             <button id="download-photos-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-300 ease-in-out shadow-lg">
+        <div id="download-container" class="mt-6 hidden flex flex-col sm:flex-row justify-center gap-3">
+            <button id="download-photos-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-200 active:scale-95 shadow-lg flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
                 Download Photos
             </button>
-            <button id="download-timings-button" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-400 transition-all duration-300 ease-in-out shadow-lg">
+            <button id="download-timings-button" class="bg-teal-600 hover:bg-teal-500 text-white font-semibold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-400 transition-all duration-200 active:scale-95 shadow-lg flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
                 Download Timings
             </button>
         </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-2xl border border-gray-700 hidden transition-all duration-300 z-50">
+        <p id="toast-message" class="text-sm font-medium"></p>
     </div>
 
     <script>
@@ -102,6 +189,7 @@
         const stopButton = document.getElementById('stop-button');
         const lapButton = document.getElementById('lap-button');
         const lapsList = document.getElementById('laps-list');
+        const emptyState = document.getElementById('empty-state');
         const cameraStreamElement = document.getElementById('camera-stream');
         const cameraCanvasElement = document.getElementById('camera-canvas');
         const cameraPreviewContainer = document.getElementById('camera-preview-container');
@@ -109,9 +197,15 @@
         const downloadPhotosButton = document.getElementById('download-photos-button');
         const downloadTimingsButton = document.getElementById('download-timings-button');
         const photoModal = document.getElementById('photo-permission-modal');
+        const cameraErrorModal = document.getElementById('camera-error-modal');
         const confirmPhotoYes = document.getElementById('confirm-photo-yes');
         const confirmPhotoNo = document.getElementById('confirm-photo-no');
-
+        const closeCameraError = document.getElementById('close-camera-error');
+        const statsContainer = document.getElementById('stats-summary');
+        const totalTimesEl = document.getElementById('total-times');
+        const lastTimeEl = document.getElementById('last-time');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
 
         // State Variables
         let timer = null;
@@ -121,43 +215,61 @@
         let lapCounter = 0;
         let recordedTimes = [];
         let cameraStream = null;
-        let capturePhotos = false; // User's choice for capturing photos
+        let capturePhotos = false;
+        let isRecordingLap = false;
 
         // --- Event Listeners ---
-        stopButton.addEventListener('click', stopStopwatch);
+        // Button actions are now handled dynamically by updateButtonStates
         downloadPhotosButton.addEventListener('click', downloadPhotosAsZip);
         downloadTimingsButton.addEventListener('click', downloadTimingsAsTxt);
 
         confirmPhotoYes.addEventListener('click', () => {
             capturePhotos = true;
             photoModal.classList.add('hidden');
+            showToast('Camera will be activated when you start');
         });
 
         confirmPhotoNo.addEventListener('click', () => {
             capturePhotos = false;
             photoModal.classList.add('hidden');
+            showToast('Timer ready without photos');
         });
 
+        closeCameraError.addEventListener('click', () => {
+            cameraErrorModal.classList.add('hidden');
+        });
+
+        window.addEventListener('beforeunload', (e) => {
+            if (isRunning || recordedTimes.length > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
 
         // --- Core Functions ---
 
         async function startStopwatch() {
             if (isRunning) return;
 
-            // Immediately disable the start button to prevent double-clicks
-            // while waiting for camera permission.
             startButton.disabled = true;
             startButton.classList.add('btn-disabled');
 
             if (capturePhotos && !cameraStream) {
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            facingMode: 'environment',
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        } 
+                    });
                     cameraStreamElement.srcObject = stream;
                     cameraStream = stream;
+                    showToast('Camera ready');
                 } catch (err) {
                     console.error("Error accessing camera:", err);
-                    // If camera fails, proceed without photo functionality for this session
-                    capturePhotos = false; 
+                    capturePhotos = false;
+                    cameraErrorModal.classList.remove('hidden');
                 }
             }
 
@@ -165,19 +277,24 @@
             timer = setInterval(updateDisplay, 10);
             isRunning = true;
             updateButtonStates();
+            showToast('Timer started');
         }
 
         function stopStopwatch() {
-            if (isRunning) {
-                clearInterval(timer);
-                elapsedTime = Date.now() - startTime;
-                isRunning = false;
-                stopCameraStream();
-                updateButtonStates();
-            }
+            if (!isRunning) return;
+            
+            clearInterval(timer);
+            elapsedTime = Date.now() - startTime;
+            isRunning = false;
+            stopCameraStream();
+            updateButtonStates();
+            updateStats();
+            showToast('Timer stopped');
         }
         
         function resetStopwatch() {
+            if (isRunning) return;
+            // Removed confirm() for better compatibility
             clearInterval(timer);
             stopCameraStream();
             isRunning = false;
@@ -185,37 +302,64 @@
             startTime = 0;
             lapCounter = 0;
             recordedTimes = [];
-            stopwatchDisplay.innerHTML = '00:00:00<span class="text-xl sm:text-2xl md:text-3xl text-gray-400">.00</span>';
+            stopwatchDisplay.innerHTML = `<span>00:00:00</span><span class="text-3xl sm:text-4xl md:text-5xl text-gray-500">.00</span>`;
             lapsList.innerHTML = '';
-            // Show the modal again for the next session
+            emptyState.classList.remove('hidden');
+            statsContainer.classList.add('hidden');
             photoModal.classList.remove('hidden');
             updateButtonStates();
+            showToast('Timer reset');
         }
 
         function recordTime() {
-            if (isRunning) {
-                lapCounter++;
-                const totalTime = Date.now() - startTime;
-                const photoDataUrl = capturePhotos ? capturePhoto() : null;
+            if (!isRunning || isRecordingLap) return;
+            
+            isRecordingLap = true;
+            
+            lapCounter++;
+            const totalTime = Date.now() - startTime;
+            const photoDataUrl = capturePhotos ? capturePhoto() : null;
 
-                recordedTimes.push({ time: totalTime, image: photoDataUrl });
+            recordedTimes.push({ time: totalTime, image: photoDataUrl });
 
-                const lapElement = document.createElement('li');
-                lapElement.className = 'flex items-center justify-between bg-gray-700 p-3 rounded-lg text-lg';
-                
-                const lapNumberSpan = document.createElement('span');
-                lapNumberSpan.className = 'font-semibold text-gray-300';
-                lapNumberSpan.textContent = `Time ${lapCounter}`;
-                
-                const lapTimeSpan = document.createElement('span');
-                lapTimeSpan.className = 'font-medium time-display';
-                lapTimeSpan.textContent = formatTime(totalTime);
+            const lapElement = document.createElement('li');
+            lapElement.className = 'flex items-center justify-between bg-gray-900 p-4 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors fade-in';
+            
+            const leftSection = document.createElement('div');
+            leftSection.className = 'flex items-center gap-3';
+            
+            const lapNumberSpan = document.createElement('span');
+            lapNumberSpan.className = 'font-bold text-blue-400 text-lg';
+            lapNumberSpan.textContent = `#${lapCounter}`;
+            
+            const lapTimeSpan = document.createElement('span');
+            lapTimeSpan.className = 'font-semibold time-display text-white';
+            lapTimeSpan.textContent = formatTime(totalTime);
 
-                lapElement.appendChild(lapNumberSpan);
-                lapElement.appendChild(lapTimeSpan);
+            leftSection.appendChild(lapNumberSpan);
+            leftSection.appendChild(lapTimeSpan);
 
-                lapsList.prepend(lapElement);
+            if (photoDataUrl) {
+                const photoIcon = document.createElement('span');
+                photoIcon.className = 'text-green-400 text-xs';
+                photoIcon.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                </svg>`;
+                leftSection.appendChild(photoIcon);
             }
+
+            lapElement.appendChild(leftSection);
+            lapsList.prepend(lapElement);
+
+            emptyState.classList.add('hidden');
+            updateStats();
+
+            // Use a minimal delay just to prevent accidental system-level double taps
+            setTimeout(() => {
+                isRecordingLap = false;
+            }, 100); 
+
+            showToast(`Time ${lapCounter} recorded`);
         }
         
         // --- Helper Functions ---
@@ -225,11 +369,16 @@
                 console.warn("Camera stream is not active. Cannot capture photo.");
                 return null;
             }
-            const context = cameraCanvasElement.getContext('2d');
-            cameraCanvasElement.width = cameraStreamElement.videoWidth;
-            cameraCanvasElement.height = cameraStreamElement.videoHeight;
-            context.drawImage(cameraStreamElement, 0, 0, cameraCanvasElement.width, cameraCanvasElement.height);
-            return cameraCanvasElement.toDataURL('image/jpeg', 0.8);
+            try {
+                const context = cameraCanvasElement.getContext('2d');
+                cameraCanvasElement.width = cameraStreamElement.videoWidth;
+                cameraCanvasElement.height = cameraStreamElement.videoHeight;
+                context.drawImage(cameraStreamElement, 0, 0, cameraCanvasElement.width, cameraCanvasElement.height);
+                return cameraCanvasElement.toDataURL('image/jpeg', 0.85);
+            } catch (err) {
+                console.error("Error capturing photo:", err);
+                return null;
+            }
         }
 
         function stopCameraStream() {
@@ -247,7 +396,7 @@
         }
         
         function formatTime(timeInMillis, showMilliseconds = false) {
-            let totalMilliseconds = timeInMillis;
+            let totalMilliseconds = Math.max(0, timeInMillis);
             let hours = Math.floor(totalMilliseconds / 3600000);
             totalMilliseconds %= 3600000;
             let minutes = Math.floor(totalMilliseconds / 60000);
@@ -258,96 +407,128 @@
             const pad = (num) => num.toString().padStart(2, '0');
 
             if (showMilliseconds) {
-                return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}<span class="text-xl sm:text-2xl md:text-3xl text-gray-400">.${pad(milliseconds)}</span>`;
+                return `<span>${pad(hours)}:${pad(minutes)}:${pad(seconds)}</span><span class="text-3xl sm:text-4xl text-gray-500">.${pad(milliseconds)}</span>`;
             }
             return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds)}`;
+        }
+
+        function updateStats() {
+            if (recordedTimes.length > 0) {
+                statsContainer.classList.remove('hidden');
+                totalTimesEl.textContent = recordedTimes.length;
+                lastTimeEl.textContent = formatTime(recordedTimes[0].time); // first element is last recorded time due to prepend
+            } else {
+                statsContainer.classList.add('hidden');
+            }
         }
 
         async function downloadPhotosAsZip() {
             const photosToZip = recordedTimes.filter(r => r.image);
             if (photosToZip.length === 0) {
-                downloadPhotosButton.textContent = 'No Photos!';
-                setTimeout(() => { downloadPhotosButton.textContent = 'Download Photos'; }, 2000);
+                showToast('No photos to download', 'error');
                 return;
             }
 
-            downloadPhotosButton.textContent = 'Zipping...';
+            const originalText = downloadPhotosButton.innerHTML;
+            downloadPhotosButton.innerHTML = '<svg class="animate-spin h-5 w-5 mx-auto" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
             downloadPhotosButton.disabled = true;
             
             try {
                 const zip = new JSZip();
                 photosToZip.forEach((record, index) => {
-                    // Use a consistent numbering based on overall recorded times
                     const recordIndex = recordedTimes.findIndex(r => r === record);
                     const base64Data = record.image.split(',')[1];
-                    zip.file(`Time_${recordIndex + 1}.jpg`, base64Data, { base64: true });
+                    const timeString = formatTime(record.time).replace(/:/g, '-');
+                    zip.file(`Time_${recordIndex + 1}_${timeString}.jpg`, base64Data, { base64: true });
                 });
 
                 const content = await zip.generateAsync({ type: "blob" });
                 
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(content);
-                link.download = "stopwatch_photos.zip";
+                const timestamp = new Date().toISOString().slice(0, 10);
+                link.download = `stopwatch_photos_${timestamp}.zip`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
 
-                downloadPhotosButton.textContent = 'Downloaded!';
+                showToast('Photos downloaded successfully');
             } catch (err) {
                 console.error("Error creating zip file:", err);
-                downloadPhotosButton.textContent = 'Error!';
+                showToast('Error downloading photos', 'error');
             } finally {
-                setTimeout(() => {
-                    downloadPhotosButton.textContent = 'Download Photos';
-                    downloadPhotosButton.disabled = false;
-                }, 2000);
+                downloadPhotosButton.innerHTML = originalText;
+                downloadPhotosButton.disabled = false;
             }
         }
         
         function downloadTimingsAsTxt() {
             if (recordedTimes.length === 0) return;
 
-            const textToSave = recordedTimes.map((record, index) => {
-                return `Time ${index + 1}: ${formatTime(record.time)}`;
-            }).join('\n');
+            const timestamp = new Date().toLocaleString();
+            const textToSave = `PHS Walk Run Timer - Recorded Times\nDate: ${timestamp}\n${'='.repeat(50)}\n\n` +
+                [...recordedTimes].reverse().map((record, index) => { // reverse for chronological order
+                    return `Time ${index + 1}: ${formatTime(record.time)}`;
+                }).join('\n') +
+                `\n\n${'='.repeat(50)}\nTotal Times Recorded: ${recordedTimes.length}`;
 
             const blob = new Blob([textToSave], { type: 'text/plain;charset=utf-8' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'stopwatch_timings.txt';
+            const dateString = new Date().toISOString().slice(0, 10);
+            link.download = `stopwatch_timings_${dateString}.txt`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+
+            showToast('Timings downloaded successfully');
         }
 
-        function copyTimingsToClipboard() {
+        async function copyTimingsToClipboard() {
             if (recordedTimes.length === 0) return;
 
-            const textToCopy = recordedTimes.map((record, index) => {
+            const textToCopy = [...recordedTimes].reverse().map((record, index) => { // reverse for chronological order
                 return `Time ${index + 1}: ${formatTime(record.time)}`;
             }).join('\n');
 
-            const textArea = document.createElement('textarea');
-            textArea.value = textToCopy;
-            textArea.style.position = 'absolute';
-            textArea.style.left = '-9999px';
-            document.body.appendChild(textArea);
-            
-            textArea.select();
-            textArea.setSelectionRange(0, 99999);
-
             try {
-                document.execCommand('copy');
-                lapButton.textContent = 'Copied!';
-                setTimeout(() => { lapButton.textContent = 'Copy'; }, 2000);
-            } catch (err)
- {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(textToCopy);
+                    showToast('Timings copied to clipboard');
+                } else {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = textToCopy;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showToast('Timings copied to clipboard');
+                }
+            } catch (err) {
                 console.error('Failed to copy timings: ', err);
-                lapButton.textContent = 'Error!';
-                 setTimeout(() => { lapButton.textContent = 'Copy'; }, 2000);
+                showToast('Failed to copy timings', 'error');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            toastMessage.textContent = message;
+            toast.classList.remove('hidden', 'bg-gray-800', 'bg-red-600', 'bg-green-600');
+            
+            if (type === 'error') {
+                toast.classList.add('bg-red-600');
+            } else if (type === 'success') {
+                toast.classList.add('bg-green-600');
+            } else {
+                toast.classList.add('bg-gray-800');
             }
 
-            document.body.removeChild(textArea);
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
         }
 
         function updateButtonStates() {
@@ -360,41 +541,45 @@
                 
                 stopButton.disabled = false;
                 stopButton.classList.remove('btn-disabled');
+                stopButton.onclick = stopStopwatch; // FIX: Assign stop function
                 
                 lapButton.disabled = false;
                 lapButton.classList.remove('btn-disabled');
+                lapButton.classList.add('scale-110');
                 lapButton.textContent = "Record";
-                lapButton.onclick = recordTime;
-                lapButton.classList.replace('bg-purple-600', 'bg-blue-600');
-                lapButton.classList.replace('hover:bg-purple-500', 'hover:bg-blue-500');
+                lapButton.onclick = recordTime; // Assign record function
+                lapButton.classList.remove('bg-purple-600', 'hover:bg-purple-500', 'focus:ring-purple-400');
+                lapButton.classList.add('bg-blue-600', 'hover:bg-blue-500', 'focus:ring-blue-400');
             } else {
                 cameraPreviewContainer.classList.add('hidden');
                 startButton.disabled = false;
                 startButton.classList.remove('btn-disabled');
+                lapButton.classList.remove('scale-110');
 
                 if (elapsedTime > 0) {
                    startButton.textContent = "Reset";
-                   startButton.onclick = resetStopwatch;
-                 } else {
-                    startButton.textContent = "Start";
-                    startButton.onclick = () => startStopwatch();
-                 }
+                   startButton.onclick = resetStopwatch; // Assign reset function
+                } else {
+                   startButton.textContent = "Start";
+                   startButton.onclick = startStopwatch; // Assign start function
+                }
                 
                 stopButton.disabled = true;
                 stopButton.classList.add('btn-disabled');
+                stopButton.onclick = null; // FIX: Clear stop function when inactive
 
                 if (recordedTimes.length > 0) {
                     lapButton.disabled = false;
                     lapButton.classList.remove('btn-disabled');
                     lapButton.textContent = "Copy";
-                    lapButton.onclick = copyTimingsToClipboard;
-                    lapButton.classList.replace('bg-blue-600', 'bg-purple-600');
-                    lapButton.classList.replace('hover:bg-blue-500', 'hover:bg-purple-500');
+                    lapButton.onclick = copyTimingsToClipboard; // Assign copy function
+                    lapButton.classList.remove('bg-blue-600', 'hover:bg-blue-500', 'focus:ring-blue-400');
+                    lapButton.classList.add('bg-purple-600', 'hover:bg-purple-500', 'focus:ring-purple-400');
                 } else {
                     lapButton.disabled = true;
                     lapButton.classList.add('btn-disabled');
                     lapButton.textContent = "Record";
-                    lapButton.onclick = recordTime;
+                    lapButton.onclick = null; // Clear onclick when disabled
                 }
             }
 
@@ -402,20 +587,47 @@
             if (!isRunning && recordedTimes.length > 0) {
                 downloadContainer.classList.remove('hidden');
                 const hasPhotos = recordedTimes.some(r => r.image);
-                // Only show download photos button if photos were captured
-                if(hasPhotos){
-                    downloadPhotosButton.classList.remove('hidden');
-                } else {
-                    downloadPhotosButton.classList.add('hidden');
-                }
+                downloadPhotosButton.style.display = hasPhotos ? 'flex' : 'none';
             } else {
                 downloadContainer.classList.add('hidden');
             }
         }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch(e.key.toLowerCase()) {
+                case ' ':
+                case 's':
+                    e.preventDefault();
+                    if (!startButton.disabled) startButton.click();
+                    break;
+                case 'r':
+                case 'l':
+                    e.preventDefault();
+                    if (!lapButton.disabled) lapButton.click();
+                    break;
+                case 'x':
+                    e.preventDefault();
+                    if (!stopButton.disabled) stopButton.click();
+                    break;
+            }
+        });
         
         // Set initial button state on page load
         updateButtonStates();
+
+        // Visibility change handling
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isRunning) {
+                elapsedTime = Date.now() - startTime;
+            } else if (!document.hidden && isRunning) {
+                startTime = Date.now() - elapsedTime;
+            }
+        });
     </script>
 </body>
 </html>
+
 
