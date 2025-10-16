@@ -402,7 +402,7 @@
                 }
             }
 
-            recordedTimes.push({ time: totalTime, image: photoDataUrl });
+            recordedTimes.push({ time: totalTime, image: photoDataUrl, lapNumber: lapCounter });
 
             // Store the current index and lap number at the time of creation
             const currentIndex = recordedTimes.length - 1;
@@ -472,13 +472,17 @@
             currentPreviewIndex = recordIndex;
             previewImage.src = record.image;
             previewTime.textContent = formatTime(record.time);
-            previewNumber.textContent = `#${lapNumber}`;
+            previewNumber.textContent = `#${record.lapNumber}`;
             updateNavigationButtons();
             photoPreviewModal.classList.remove('hidden');
         }
 
         function navigatePreview(direction) {
-            // direction: -1 for previous (going back to #1), +1 for next (going forward)
+            // direction: -1 for previous (☚ going back toward #1), +1 for next (☛ going forward toward later captures)
+            // We need to move in the opposite direction in the array because:
+            // - Array index increases as lap numbers increase (#1 at index 0, #2 at index 1, etc.)
+            // - Previous (☚) should go to smaller lap numbers (smaller index)
+            // - Next (☛) should go to larger lap numbers (larger index)
             const newIndex = currentPreviewIndex - direction;
             
             // Validate bounds
@@ -486,27 +490,22 @@
                 return;
             }
             
-            // Calculate the lap number based on the array position
-            // Since newest records are at the end of the array, lap number decreases as index increases
-            const lapNumber = recordedTimes.length - newIndex;
-            
             currentPreviewIndex = newIndex;
             const record = recordedTimes[newIndex];
             
             previewImage.src = record.image;
             previewTime.textContent = formatTime(record.time);
-            previewNumber.textContent = `#${lapNumber}`;
+            previewNumber.textContent = `#${record.lapNumber}`;
             updateNavigationButtons();
         }
 
         function updateNavigationButtons() {
-            // Calculate current lap number
-            const currentLapNumber = recordedTimes.length - currentPreviewIndex;
+            const currentRecord = recordedTimes[currentPreviewIndex];
             
-            // Disable previous (☚) button if at lap #1 (highest index in array)
-            prevPhotoButton.disabled = currentLapNumber === 1;
+            // Disable previous (☚) button if at lap #1 (the first capture, index 0)
+            prevPhotoButton.disabled = currentRecord.lapNumber === 1;
             
-            // Disable next (☛) button if at the last/latest lap (index 0 in array)
+            // Disable next (☛) button if at the last/latest lap (highest lap number, last index)
             nextPhotoButton.disabled = currentPreviewIndex === recordedTimes.length - 1;
         }
 
