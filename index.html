@@ -120,10 +120,25 @@
             </button>
             <div class="p-4">
                 <img id="preview-image" src="" alt="Captured photo" class="w-full h-auto rounded-lg mb-3 object-cover bg-gray-900" style="max-height: 400px;">
-                <div class="text-center bg-gray-900 rounded-lg p-3 border border-gray-700">
+                <div class="text-center bg-gray-900 rounded-lg p-3 border border-gray-700 mb-3">
                     <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Recorded Time</div>
                     <div id="preview-time" class="text-2xl font-bold time-display text-white">00:00:00.00</div>
                     <div id="preview-number" class="text-blue-400 text-sm mt-1">#1</div>
+                </div>
+                <!-- Navigation Buttons -->
+                <div class="flex justify-between items-center gap-3">
+                    <button id="prev-photo-button" class="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-500 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        Previous
+                    </button>
+                    <button id="next-photo-button" class="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-500 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2">
+                        Next
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -170,7 +185,7 @@
         <!-- Recorded Times Frame -->
         <div class="bg-gray-900 rounded-xl border border-gray-700 p-4 mb-4">
             <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Recorded Times</h2>
-            <div id="laps-container" class="w-full max-h-64 overflow-y-auto pr-2">
+            <div id="laps-container" class="w-full max-h-40 overflow-y-auto pr-2">
                 <div id="empty-state" class="text-center py-8 text-gray-500">
                     <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -237,6 +252,8 @@
         const previewImage = document.getElementById('preview-image');
         const previewTime = document.getElementById('preview-time');
         const previewNumber = document.getElementById('preview-number');
+        const prevPhotoButton = document.getElementById('prev-photo-button');
+        const nextPhotoButton = document.getElementById('next-photo-button');
         const toast = document.getElementById('toast');
         const toastMessage = document.getElementById('toast-message');
 
@@ -250,6 +267,7 @@
         let cameraStream = null;
         let capturePhotos = false;
         let lastRecordTime = 0;
+        let currentPreviewIndex = 0;
         const RECORD_DEBOUNCE_MS = 500;
 
         // Event Listeners
@@ -283,6 +301,14 @@
 
         closePhotoPreview.addEventListener('click', () => {
             photoPreviewModal.classList.add('hidden');
+        });
+
+        prevPhotoButton.addEventListener('click', () => {
+            navigatePreview(-1);
+        });
+
+        nextPhotoButton.addEventListener('click', () => {
+            navigatePreview(1);
         });
 
         [photoModal, cameraErrorModal, creditsModal, photoPreviewModal].forEach(modal => {
@@ -448,10 +474,46 @@
             const record = recordedTimes[recordIndex];
             if (!record || !record.image) return;
             
+            currentPreviewIndex = recordIndex;
             previewImage.src = record.image;
             previewTime.textContent = formatTime(record.time);
             previewNumber.textContent = `#${lapNumber}`;
+            updateNavigationButtons();
             photoPreviewModal.classList.remove('hidden');
+        }
+
+        function navigatePreview(direction) {
+            const newIndex = currentPreviewIndex + direction;
+            
+            // Validate bounds
+            if (newIndex < 0 || newIndex >= recordedTimes.length) {
+                return;
+            }
+            
+            // Find the lap number for this record
+            let lapNumber = 1;
+            for (let i = 0; i < recordedTimes.length; i++) {
+                if (i === newIndex) {
+                    lapNumber = recordedTimes.length - i;
+                    break;
+                }
+            }
+            
+            currentPreviewIndex = newIndex;
+            const record = recordedTimes[newIndex];
+            
+            previewImage.src = record.image;
+            previewTime.textContent = formatTime(record.time);
+            previewNumber.textContent = `#${lapNumber}`;
+            updateNavigationButtons();
+        }
+
+        function updateNavigationButtons() {
+            // Disable previous button if at first record (index 0)
+            prevPhotoButton.disabled = currentPreviewIndex === 0;
+            
+            // Disable next button if at last record
+            nextPhotoButton.disabled = currentPreviewIndex === recordedTimes.length - 1;
         }
 
         function stopCameraStream() {
