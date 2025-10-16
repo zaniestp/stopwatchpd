@@ -503,7 +503,7 @@
             const currentRecord = recordedTimes[currentPreviewIndex];
             
             // Disable previous (☚) button if at lap #1 (the first capture, index 0)
-            prevPhotoButton.disabled = currentRecord.lapNumber === 1;
+            prevPhotoButton.disabled = currentPreviewIndex === 0;
             
             // Disable next (☛) button if at the last/latest lap (highest lap number, last index)
             nextPhotoButton.disabled = currentPreviewIndex === recordedTimes.length - 1;
