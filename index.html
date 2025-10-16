@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHS Walk Run Stopwatch (Optimized)</title>
+    <title>PHS Walk Run Stopwatch</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -102,11 +102,30 @@
         <div class="bg-gray-800 p-8 rounded-2xl text-center shadow-2xl max-w-md w-full border border-gray-700 relative">
             <h2 class="text-2xl font-bold mb-3">Credits</h2>
             <p class="mb-4 text-gray-300">PHS Walk Run Timer</p>
-            <p class="mb-2 text-sm text-gray-500 font-mono">Version: v1.1a</p>
+            <p class="mb-2 text-sm text-gray-500 font-mono">Version: v1.2</p>
             <p class="mb-6 text-xs text-gray-500">Comments to <a href="http://github.com/zaniestp" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">github.com/zaniestp</a></p>
             <button id="close-credits-modal" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-8 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-200 active:scale-95">
                 Close
             </button>
+        </div>
+    </div>
+
+    <!-- Photo Preview Modal -->
+    <div id="photo-preview-modal" class="fixed inset-0 bg-black bg-opacity-90 modal-backdrop flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-700 relative overflow-hidden">
+            <button id="close-photo-preview" class="absolute top-3 right-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-2 focus:outline-none focus:ring-4 focus:ring-gray-500 transition-all z-10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <div class="p-4">
+                <img id="preview-image" src="" alt="Captured photo" class="w-full h-auto rounded-lg mb-3 object-cover bg-gray-900" style="max-height: 400px;">
+                <div class="text-center bg-gray-900 rounded-lg p-3 border border-gray-700">
+                    <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Recorded Time</div>
+                    <div id="preview-time" class="text-2xl font-bold time-display text-white">00:00:00.00</div>
+                    <div id="preview-number" class="text-blue-400 text-sm mt-1">#1</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -191,7 +210,7 @@
 
         <!-- Version Number -->
         <div class="absolute bottom-4 right-6 text-xs text-gray-600 font-mono">
-             <a href="#" id="credits-link" class="hover:text-gray-400 transition-colors">v1.1a</a>
+             <a href="#" id="credits-link" class="hover:text-gray-400 transition-colors">v1.2</a>
         </div>
     </div>
 
@@ -222,6 +241,11 @@
         const creditsLink = document.getElementById('credits-link');
         const creditsModal = document.getElementById('credits-modal');
         const closeCreditsModal = document.getElementById('close-credits-modal');
+        const photoPreviewModal = document.getElementById('photo-preview-modal');
+        const closePhotoPreview = document.getElementById('close-photo-preview');
+        const previewImage = document.getElementById('preview-image');
+        const previewTime = document.getElementById('preview-time');
+        const previewNumber = document.getElementById('preview-number');
         const statsContainer = document.getElementById('stats-summary');
         const totalTimesEl = document.getElementById('total-times');
         const lastTimeEl = document.getElementById('last-time');
@@ -237,10 +261,10 @@
         let recordedTimes = [];
         let cameraStream = null;
         let capturePhotos = false;
-        let isRecordingLap = false;
+        let lastRecordTime = 0;
+        const RECORD_DEBOUNCE_MS = 500;
 
-        // --- Event Listeners ---
-        // Button actions are now handled dynamically by updateButtonStates
+        // Event Listeners
         downloadPhotosButton.addEventListener('click', downloadPhotosAsZip);
         downloadTimingsButton.addEventListener('click', downloadTimingsAsTxt);
 
@@ -269,6 +293,18 @@
             creditsModal.classList.add('hidden');
         });
 
+        closePhotoPreview.addEventListener('click', () => {
+            photoPreviewModal.classList.add('hidden');
+        });
+
+        [photoModal, cameraErrorModal, creditsModal, photoPreviewModal].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+        });
+
         window.addEventListener('beforeunload', (e) => {
             if (isRunning || recordedTimes.length > 0) {
                 e.preventDefault();
@@ -276,21 +312,17 @@
             }
         });
 
-        // --- Core Functions ---
-
+        // Core Functions
         async function startStopwatch() {
             if (isRunning) return;
-
-            startButton.disabled = true;
-            startButton.classList.add('btn-disabled');
 
             if (capturePhotos && !cameraStream) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ 
                         video: { 
                             facingMode: 'environment',
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 }
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
                         } 
                     });
                     cameraStreamElement.srcObject = stream;
@@ -324,7 +356,7 @@
         
         function resetStopwatch() {
             if (isRunning) return;
-            // Removed confirm() for better compatibility
+            
             clearInterval(timer);
             stopCameraStream();
             isRunning = false;
@@ -332,6 +364,7 @@
             startTime = 0;
             lapCounter = 0;
             recordedTimes = [];
+            lastRecordTime = 0;
             stopwatchDisplay.innerHTML = `<span>00:00:00</span><span class="text-2xl sm:text-3xl text-gray-500">.00</span>`;
             lapsList.innerHTML = '';
             emptyState.classList.remove('hidden');
@@ -342,18 +375,32 @@
         }
 
         function recordTime() {
-            if (!isRunning || isRecordingLap) return;
+            if (!isRunning) return;
             
-            isRecordingLap = true;
+            const now = Date.now();
+            if (now - lastRecordTime < RECORD_DEBOUNCE_MS) {
+                return;
+            }
+            lastRecordTime = now;
             
             lapCounter++;
             const totalTime = Date.now() - startTime;
-            const photoDataUrl = capturePhotos ? capturePhoto() : null;
+            let photoDataUrl = null;
+            
+            if (capturePhotos) {
+                try {
+                    photoDataUrl = capturePhoto();
+                } catch (err) {
+                    console.error("Error capturing photo:", err);
+                    showToast('Photo capture failed', 'error');
+                }
+            }
 
             recordedTimes.push({ time: totalTime, image: photoDataUrl });
 
             const lapElement = document.createElement('li');
-            lapElement.className = 'flex items-center justify-between bg-gray-900 p-4 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors fade-in';
+            lapElement.className = 'flex items-center justify-between bg-gray-900 p-4 rounded-lg border border-gray-700 hover:border-blue-500 transition-all fade-in cursor-pointer';
+            lapElement.dataset.lapIndex = recordedTimes.length - 1;
             
             const leftSection = document.createElement('div');
             leftSection.className = 'flex items-center gap-3';
@@ -376,6 +423,8 @@
                     <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
                 </svg>`;
                 leftSection.appendChild(photoIcon);
+                
+                lapElement.addEventListener('click', () => showPhotoPreview(recordedTimes.length - 1, lapCounter));
             }
 
             lapElement.appendChild(leftSection);
@@ -384,16 +433,10 @@
             emptyState.classList.add('hidden');
             updateStats();
 
-            // Use a minimal delay just to prevent accidental system-level double taps
-            setTimeout(() => {
-                isRecordingLap = false;
-            }, 100); 
-
             showToast(`Time ${lapCounter} recorded`);
         }
         
-        // --- Helper Functions ---
-
+        // Helper Functions
         function capturePhoto() {
             if (!cameraStream || !cameraStream.active) {
                 console.warn("Camera stream is not active. Cannot capture photo.");
@@ -404,11 +447,21 @@
                 cameraCanvasElement.width = cameraStreamElement.videoWidth;
                 cameraCanvasElement.height = cameraStreamElement.videoHeight;
                 context.drawImage(cameraStreamElement, 0, 0, cameraCanvasElement.width, cameraCanvasElement.height);
-                return cameraCanvasElement.toDataURL('image/jpeg', 0.85);
+                return cameraCanvasElement.toDataURL('image/jpeg', 0.7);
             } catch (err) {
                 console.error("Error capturing photo:", err);
                 return null;
             }
+        }
+
+        function showPhotoPreview(recordIndex, lapNumber) {
+            const record = recordedTimes[recordIndex];
+            if (!record || !record.image) return;
+            
+            previewImage.src = record.image;
+            previewTime.textContent = formatTime(record.time);
+            previewNumber.textContent = `#${lapNumber}`;
+            photoPreviewModal.classList.remove('hidden');
         }
 
         function stopCameraStream() {
@@ -446,7 +499,7 @@
             if (recordedTimes.length > 0) {
                 statsContainer.classList.remove('hidden');
                 totalTimesEl.textContent = recordedTimes.length;
-                lastTimeEl.textContent = formatTime(recordedTimes[0].time); // first element is last recorded time due to prepend
+                lastTimeEl.textContent = formatTime(recordedTimes[0].time);
             } else {
                 statsContainer.classList.add('hidden');
             }
@@ -498,7 +551,7 @@
 
             const timestamp = new Date().toLocaleString();
             const textToSave = `PHS Walk Run Timer - Recorded Times\nDate: ${timestamp}\n${'='.repeat(50)}\n\n` +
-                [...recordedTimes].reverse().map((record, index) => { // reverse for chronological order
+                [...recordedTimes].reverse().map((record, index) => {
                     return `Time ${index + 1}: ${formatTime(record.time)}`;
                 }).join('\n') +
                 `\n\n${'='.repeat(50)}\nTotal Times Recorded: ${recordedTimes.length}`;
@@ -519,7 +572,7 @@
         async function copyTimingsToClipboard() {
             if (recordedTimes.length === 0) return;
 
-            const textToCopy = [...recordedTimes].reverse().map((record, index) => { // reverse for chronological order
+            const textToCopy = [...recordedTimes].reverse().map((record, index) => {
                 return `Time ${index + 1}: ${formatTime(record.time)}`;
             }).join('\n');
 
@@ -568,16 +621,17 @@
                 }
                 startButton.disabled = true;
                 startButton.classList.add('btn-disabled');
+                startButton.onclick = null;
                 
                 stopButton.disabled = false;
                 stopButton.classList.remove('btn-disabled');
-                stopButton.onclick = stopStopwatch; // FIX: Assign stop function
+                stopButton.onclick = stopStopwatch;
                 
                 lapButton.disabled = false;
                 lapButton.classList.remove('btn-disabled');
                 lapButton.classList.add('scale-110');
                 lapButton.textContent = "Record";
-                lapButton.onclick = recordTime; // Assign record function
+                lapButton.onclick = recordTime;
                 lapButton.classList.remove('bg-purple-600', 'hover:bg-purple-500', 'focus:ring-purple-400');
                 lapButton.classList.add('bg-blue-600', 'hover:bg-blue-500', 'focus:ring-blue-400');
             } else {
@@ -588,32 +642,31 @@
 
                 if (elapsedTime > 0) {
                    startButton.textContent = "Reset";
-                   startButton.onclick = resetStopwatch; // Assign reset function
+                   startButton.onclick = resetStopwatch;
                 } else {
                    startButton.textContent = "Start";
-                   startButton.onclick = startStopwatch; // Assign start function
+                   startButton.onclick = startStopwatch;
                 }
                 
                 stopButton.disabled = true;
                 stopButton.classList.add('btn-disabled');
-                stopButton.onclick = null; // FIX: Clear stop function when inactive
+                stopButton.onclick = null;
 
                 if (recordedTimes.length > 0) {
                     lapButton.disabled = false;
                     lapButton.classList.remove('btn-disabled');
                     lapButton.textContent = "Copy";
-                    lapButton.onclick = copyTimingsToClipboard; // Assign copy function
+                    lapButton.onclick = copyTimingsToClipboard;
                     lapButton.classList.remove('bg-blue-600', 'hover:bg-blue-500', 'focus:ring-blue-400');
                     lapButton.classList.add('bg-purple-600', 'hover:bg-purple-500', 'focus:ring-purple-400');
                 } else {
                     lapButton.disabled = true;
                     lapButton.classList.add('btn-disabled');
                     lapButton.textContent = "Record";
-                    lapButton.onclick = null; // Clear onclick when disabled
+                    lapButton.onclick = null;
                 }
             }
 
-            // Show/hide download buttons
             if (!isRunning && recordedTimes.length > 0) {
                 downloadContainer.classList.remove('hidden');
                 const hasPhotos = recordedTimes.some(r => r.image);
@@ -623,7 +676,6 @@
             }
         }
 
-        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             
@@ -645,10 +697,8 @@
             }
         });
         
-        // Set initial button state on page load
         updateButtonStates();
 
-        // Visibility change handling
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isRunning) {
                 elapsedTime = Date.now() - startTime;
@@ -659,6 +709,3 @@
     </script>
 </body>
 </html>
-
-
-
