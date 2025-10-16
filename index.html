@@ -398,16 +398,20 @@
 
             recordedTimes.push({ time: totalTime, image: photoDataUrl });
 
+            // Store the current index at the time of creation
+            const currentIndex = recordedTimes.length - 1;
+            const currentLapNumber = lapCounter;
+
             const lapElement = document.createElement('li');
             lapElement.className = 'flex items-center justify-between bg-gray-900 p-4 rounded-lg border border-gray-700 hover:border-blue-500 transition-all fade-in cursor-pointer';
-            lapElement.dataset.lapIndex = recordedTimes.length - 1;
+            lapElement.dataset.lapIndex = currentIndex;
             
             const leftSection = document.createElement('div');
             leftSection.className = 'flex items-center gap-3';
             
             const lapNumberSpan = document.createElement('span');
             lapNumberSpan.className = 'font-bold text-blue-400 text-lg';
-            lapNumberSpan.textContent = `#${lapCounter}`;
+            lapNumberSpan.textContent = `#${currentLapNumber}`;
             
             const lapTimeSpan = document.createElement('span');
             lapTimeSpan.className = 'font-semibold time-display text-white';
@@ -424,7 +428,8 @@
                 </svg>`;
                 leftSection.appendChild(photoIcon);
                 
-                lapElement.addEventListener('click', () => showPhotoPreview(recordedTimes.length - 1, lapCounter));
+                // FIX: Use the captured values instead of dynamic calculation
+                lapElement.addEventListener('click', () => showPhotoPreview(currentIndex, currentLapNumber));
             }
 
             lapElement.appendChild(leftSection);
@@ -433,7 +438,7 @@
             emptyState.classList.add('hidden');
             updateStats();
 
-            showToast(`Time ${lapCounter} recorded`);
+            showToast(`Time ${currentLapNumber} recorded`);
         }
         
         // Helper Functions
@@ -499,7 +504,7 @@
             if (recordedTimes.length > 0) {
                 statsContainer.classList.remove('hidden');
                 totalTimesEl.textContent = recordedTimes.length;
-                lastTimeEl.textContent = formatTime(recordedTimes[0].time);
+                lastTimeEl.textContent = formatTime(recordedTimes[recordedTimes.length - 1].time);
             } else {
                 statsContainer.classList.add('hidden');
             }
