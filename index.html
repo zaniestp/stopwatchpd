@@ -1,277 +1,716 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PHS Walk Run Timer v1.7</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .time-display { font-family: 'Roboto Mono', monospace; font-size: 2.2rem; }
-    .btn-disabled { opacity: 0.5; cursor: not-allowed; }
-    .fade-in { animation: fadeIn 0.3s ease-in; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px);} to {opacity:1; transform: translateY(0);} }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHS Walk Run Stopwatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .time-display {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #laps-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #laps-container::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        #laps-container::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        #laps-container::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        .pulse-ring {
+            animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .button-press {
+            transform: scale(0.95);
+        }
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
-  <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-5 border border-gray-700">
-    <div class="text-center mb-4">
-      <h1 class="text-xl font-bold">PHS Walk Run Timer</h1>
-    </div><div class="flex justify-between items-center mb-3">
-  <input type="file" id="importCsv" accept=".csv" class="text-xs" />
-  <button id="showParticipants" class="bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded-full text-xs font-semibold">P</button>
-</div>
 
-<div id="camera-preview" class="hidden mb-3 rounded-xl overflow-hidden border border-green-500">
-  <video id="camera" autoplay playsinline class="w-full"></video>
-</div>
-
-<div class="text-center mb-5 bg-gray-900 p-3 rounded-lg border border-gray-700">
-  <h1 id="display" class="font-bold time-display">00:00:00.00</h1>
-</div>
-
-<div class="flex gap-2 justify-center mb-5 flex-wrap">
-  <button id="start" class="bg-green-600 hover:bg-green-500 rounded-full px-5 py-2 font-bold text-sm">Start</button>
-  <button id="record" class="bg-blue-600 hover:bg-blue-500 rounded-full px-5 py-2 font-bold text-sm btn-disabled" disabled>Record</button>
-  <button id="stop" class="bg-red-600 hover:bg-red-500 rounded-full px-5 py-2 font-bold text-sm btn-disabled" disabled>Stop</button>
-</div>
-
-<div class="mb-3 flex items-center gap-2">
-  <div class="flex-1">
-    <label class="text-xs text-gray-400">Participant Name / ID:</label>
-    <input id="participant" class="w-full mt-1 p-1.5 rounded-lg bg-gray-900 border border-gray-700 text-white focus:outline-none text-sm" placeholder="Optional: e.g., Bib 45" />
-  </div>
-  <button id="clearParticipant" class="mt-5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold px-3 py-1 rounded-lg">Clear</button>
-</div>
-
-<ul id="records" class="space-y-1 max-h-60 overflow-y-auto mb-3 text-sm"></ul>
-
-<div class="flex flex-col sm:flex-row justify-center gap-2">
-  <button id="downloadTxt" class="bg-teal-600 hover:bg-teal-500 px-4 py-2 rounded-lg font-semibold text-sm hidden">Download TXT</button>
-  <button id="downloadCsv" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg font-semibold text-sm hidden">Download CSV</button>
-  <button id="downloadZip" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg font-semibold text-sm hidden">Download Photos</button>
-</div>
-
-  </div>  <!-- Participants Popup -->  <div id="participantsModal" class="fixed inset-0 bg-black bg-opacity-60 hidden justify-center items-center z-50">
-    <div class="bg-gray-800 p-6 rounded-lg max-w-sm w-full border border-gray-600 shadow-lg">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold">Participants</h2>
-        <button id="closeParticipants" class="text-gray-400 hover:text-white">✖</button>
-      </div>
-      <div id="participantsList" class="max-h-60 overflow-y-auto text-sm text-gray-200 border-t border-gray-700 pt-2"></div>
+    <!-- Photo Permission Modal -->
+    <div id="photo-permission-modal" class="fixed inset-0 bg-black bg-opacity-75 modal-backdrop flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 p-8 rounded-2xl text-center shadow-2xl max-w-md w-full border border-gray-700">
+            <div class="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold mb-3">Capture Photos?</h2>
+            <p class="mb-6 text-gray-300 text-sm leading-relaxed">Would you like to capture a photo with each recorded time? This requires camera access.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-3">
+                <button id="confirm-photo-yes" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-3 px-8 rounded-lg focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-200 active:scale-95">
+                    Yes, Enable Camera
+                </button>
+                <button id="confirm-photo-no" class="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-8 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-400 transition-all duration-200 active:scale-95">
+                    No, Skip Photos
+                </button>
+            </div>
+        </div>
     </div>
-  </div>  <!-- Photo Popup -->  <div id="photoModal" class="fixed inset-0 bg-black bg-opacity-80 hidden justify-center items-center z-50 flex-col text-center">
-    <img id="photoImage" src="" alt="Captured photo" class="max-w-full max-h-[80vh] rounded-lg border border-gray-700 shadow-xl mb-3" />
-    <div id="photoCaption" class="text-sm text-gray-300"></div>
-  </div>  <script>
-    const display = document.getElementById('display');
-    const startBtn = document.getElementById('start');
-    const recordBtn = document.getElementById('record');
-    const stopBtn = document.getElementById('stop');
-    const records = document.getElementById('records');
-    const participantInput = document.getElementById('participant');
-    const clearParticipantBtn = document.getElementById('clearParticipant');
-    const downloadTxt = document.getElementById('downloadTxt');
-    const downloadCsv = document.getElementById('downloadCsv');
-    const downloadZip = document.getElementById('downloadZip');
-    const importCsv = document.getElementById('importCsv');
-    const showParticipants = document.getElementById('showParticipants');
-    const participantsModal = document.getElementById('participantsModal');
-    const participantsList = document.getElementById('participantsList');
-    const closeParticipants = document.getElementById('closeParticipants');
-    const cameraPreview = document.getElementById('camera-preview');
-    const cameraEl = document.getElementById('camera');
-    const photoModal = document.getElementById('photoModal');
-    const photoImage = document.getElementById('photoImage');
-    const photoCaption = document.getElementById('photoCaption');
 
-    let startTime = 0, elapsed = 0, running = false, capture = false;
-    let stream = null;
-    let times = JSON.parse(localStorage.getItem('phsTimes') || '[]');
-    let participants = JSON.parse(localStorage.getItem('phsParticipants') || '[]');
-    let currentParticipant = '';
+    <!-- Camera Permission Error Modal -->
+    <div id="camera-error-modal" class="fixed inset-0 bg-black bg-opacity-75 modal-backdrop flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl text-center shadow-2xl max-w-md w-full border border-gray-700">
+            <div class="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold mb-3">Camera Access Denied</h2>
+            <p class="mb-6 text-gray-300 text-sm leading-relaxed">Unable to access camera. The stopwatch will continue without photo capture.</p>
+            <button id="close-camera-error" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-8 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-200 active:scale-95">
+                Continue
+            </button>
+        </div>
+    </div>
 
-    participantInput.addEventListener('input', () => {
-      currentParticipant = participantInput.value.trim();
-      localStorage.setItem('phsCurrentParticipant', currentParticipant);
-    });
+    <!-- Credits Modal -->
+    <div id="credits-modal" class="fixed inset-0 bg-black bg-opacity-75 modal-backdrop flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl text-center shadow-2xl max-w-md w-full border border-gray-700 relative">
+            <h2 class="text-2xl font-bold mb-3">Credits</h2>
+            <p class="mb-4 text-gray-300">PHS Walk Run Timer</p>
+            <p class="mb-2 text-sm text-gray-500 font-mono">Version: v1.2</p>
+            <p class="mb-6 text-xs text-gray-500">Comments to <a href="http://github.com/zaniestp" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">github.com/zaniestp</a></p>
+            <button id="close-credits-modal" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-8 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-200 active:scale-95">
+                Close
+            </button>
+        </div>
+    </div>
 
-    clearParticipantBtn.addEventListener('click', () => {
-      participantInput.value = '';
-      currentParticipant = '';
-      localStorage.removeItem('phsCurrentParticipant');
-      participantInput.focus();
-    });
+    <!-- Photo Preview Modal -->
+    <div id="photo-preview-modal" class="fixed inset-0 bg-black bg-opacity-90 modal-backdrop flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-gray-700 relative overflow-hidden">
+            <button id="close-photo-preview" class="absolute top-3 right-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-2 focus:outline-none focus:ring-4 focus:ring-gray-500 transition-all z-10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <div class="p-4">
+                <img id="preview-image" src="" alt="Captured photo" class="w-full h-auto rounded-lg mb-3 object-cover bg-gray-900" style="max-height: 400px;">
+                <div class="text-center bg-gray-900 rounded-lg p-3 border border-gray-700">
+                    <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Recorded Time</div>
+                    <div id="preview-time" class="text-2xl font-bold time-display text-white">00:00:00.00</div>
+                    <div id="preview-number" class="text-blue-400 text-sm mt-1">#1</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    importCsv.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const lines = event.target.result.split('\n').slice(1);
-        participants = lines.map(line => {
-          const [id, name] = line.split(',');
-          return id && name ? { id: id.trim(), name: name.trim() } : null;
-        }).filter(Boolean);
-        localStorage.setItem('phsParticipants', JSON.stringify(participants));
-        renderParticipantsList();
-      };
-      reader.readAsText(file);
-    });
+    <!-- Hidden canvas for capturing photos -->
+    <canvas id="camera-canvas" class="hidden w-0 h-0"></canvas>
 
-    showParticipants.addEventListener('click', () => {
-      renderParticipantsList();
-      participantsModal.classList.remove('hidden');
-      participantsModal.classList.add('flex');
-    });
+    <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-gray-700 relative">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-xl font-bold text-gray-300">PHS Walk Run Timer</h1>
+        </div>
 
-    closeParticipants.addEventListener('click', () => {
-      participantsModal.classList.add('hidden');
-      participantsModal.classList.remove('flex');
-    });
+        <!-- Camera Preview Frame -->
+        <div id="camera-preview-container" class="mb-6 rounded-xl overflow-hidden hidden border-2 border-green-500 shadow-lg relative">
+            <video id="camera-stream" autoplay playsinline class="w-full h-auto block"></video>
+            <div class="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 pulse-ring">
+                <span class="w-2 h-2 bg-white rounded-full"></span>
+                REC
+            </div>
+        </div>
 
-    function renderParticipantsList() {
-      if (participants.length === 0) {
-        participantsList.innerHTML = '<p class="text-gray-400 text-center">No participants loaded</p>';
-        return;
-      }
-      participantsList.innerHTML = participants.map(p => `<div class='border-b border-gray-700 py-1 px-1'><strong>${p.id}</strong> - ${p.name}</div>`).join('');
-    }
+        <!-- Stopwatch Display -->
+        <div class="text-center mb-8 bg-gray-900 rounded-xl p-6 border border-gray-700 mx-2">
+            <h1 class="text-4xl sm:text-5xl font-bold time-display tracking-wider flex items-baseline justify-center" id="stopwatch-display">
+                <span>00:00:00</span><span class="text-2xl sm:text-3xl text-gray-500">.00</span>
+            </h1>
+        </div>
 
-    window.addEventListener('load', () => {
-      const saved = localStorage.getItem('phsCurrentParticipant');
-      if (saved) {
-        participantInput.value = saved;
-        currentParticipant = saved;
-      }
-      renderParticipantsList();
-    });
+        <!-- Control Buttons -->
+        <div class="flex justify-center items-center gap-4 mb-8">
+            <button id="start-button" class="w-24 h-24 rounded-full bg-green-600 hover:bg-green-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl">
+                Start
+            </button>
+            <button id="lap-button" class="w-28 h-28 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl btn-disabled" disabled>
+                Record
+            </button>
+            <button id="stop-button" class="w-24 h-24 rounded-full bg-red-600 hover:bg-red-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-red-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl btn-disabled" disabled>
+                Stop
+            </button>
+        </div>
 
-    function fmt(ms) {
-      const h = Math.floor(ms / 3600000);
-      const m = Math.floor((ms % 3600000) / 60000);
-      const s = Math.floor((ms % 60000) / 1000);
-      const cs = Math.floor((ms % 1000) / 10);
-      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
-    }
+        <!-- Stats Summary -->
+        <div id="stats-summary" class="hidden mb-6 grid grid-cols-2 gap-3">
+            <div class="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Total Times</div>
+                <div id="total-times" class="text-2xl font-bold text-white">0</div>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Last Time</div>
+                <div id="last-time" class="text-lg font-semibold text-white time-display">--:--:--.--</div>
+            </div>
+        </div>
 
-    function updateDisplay() {
-      if (running) {
-        display.textContent = fmt(Date.now() - startTime);
-        requestAnimationFrame(updateDisplay);
-      }
-    }
+        <!-- Laps Display -->
+        <div id="laps-container" class="w-full max-h-80 overflow-y-auto pr-2">
+            <div id="empty-state" class="text-center py-12 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-sm">No times recorded yet</p>
+            </div>
+            <ul id="laps-list" class="space-y-2">
+                <!-- Recorded times will be injected here by JavaScript -->
+            </ul>
+        </div>
 
-    async function start() {
-      if (running) return;
-      startBtn.disabled = true;
-      recordBtn.disabled = stopBtn.disabled = false;
-      recordBtn.classList.remove('btn-disabled');
-      stopBtn.classList.remove('btn-disabled');
-      running = true;
-      startTime = Date.now() - elapsed;
-      updateDisplay();
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        cameraEl.srcObject = stream;
-        await new Promise(r => cameraEl.onloadedmetadata = r);
-        cameraPreview.classList.remove('hidden');
-        capture = true;
-      } catch {
-        capture = false;
-      }
-    }
+        <!-- Download Buttons Container -->
+        <div id="download-container" class="mt-6 hidden flex flex-col sm:flex-row justify-center gap-3">
+            <button id="download-photos-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-200 active:scale-95 shadow-lg flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Download Photos
+            </button>
+            <button id="download-timings-button" class="bg-teal-600 hover:bg-teal-500 text-white font-semibold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-400 transition-all duration-200 active:scale-95 shadow-lg flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Download Timings
+            </button>
+        </div>
 
-    function stop() {
-      running = false;
-      elapsed = Date.now() - startTime;
-      recordBtn.disabled = stopBtn.disabled = true;
-      recordBtn.classList.add('btn-disabled');
-      stopBtn.classList.add('btn-disabled');
-      startBtn.disabled = false;
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-      }
-      cameraPreview.classList.add('hidden');
-    }
+        <!-- Version Number -->
+        <div class="absolute bottom-4 right-6 text-xs text-gray-600 font-mono">
+             <a href="#" id="credits-link" class="hover:text-gray-400 transition-colors">v1.2</a>
+        </div>
+    </div>
 
-    function record() {
-      if (!running) return;
-      const t = Date.now() - startTime;
-      const participant = currentParticipant || participantInput.value.trim() || 'Unknown';
-      let img = null;
-      if (capture && stream) {
-        const c = document.createElement('canvas');
-        c.width = cameraEl.videoWidth;
-        c.height = cameraEl.videoHeight;
-        c.getContext('2d').drawImage(cameraEl, 0, 0);
-        img = c.toDataURL('image/jpeg', 0.85);
-      }
-      const entry = { time: t, participant, img };
-      times.unshift(entry);
-      localStorage.setItem('phsTimes', JSON.stringify(times));
-      render();
-    }
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-2xl border border-gray-700 hidden transition-all duration-300 z-50">
+        <p id="toast-message" class="text-sm font-medium"></p>
+    </div>
 
-    function render() {
-      records.innerHTML = times.map((r, i) => `
-        <li onclick="showPhotoModal('${r.img || ''}','${r.participant}','${fmt(r.time)}')" class='cursor-pointer fade-in p-1.5 bg-gray-900 border border-gray-700 rounded-lg flex justify-between items-center hover:border-gray-500 transition'>
-          <div><strong>#${times.length - i}</strong> (${r.participant}) ${fmt(r.time)}</div>
-          ${r.img ? '<span class="text-green-400">📷</span>' : ''}
-        </li>`).join('');
-      const hasData = times.length > 0;
-      downloadTxt.classList.toggle('hidden', !hasData);
-      downloadCsv.classList.toggle('hidden', !hasData);
-      downloadZip.classList.toggle('hidden', !times.some(r => r.img));
-    }
+    <script>
+        // DOM Elements
+        const stopwatchDisplay = document.getElementById('stopwatch-display');
+        const startButton = document.getElementById('start-button');
+        const stopButton = document.getElementById('stop-button');
+        const lapButton = document.getElementById('lap-button');
+        const lapsList = document.getElementById('laps-list');
+        const emptyState = document.getElementById('empty-state');
+        const cameraStreamElement = document.getElementById('camera-stream');
+        const cameraCanvasElement = document.getElementById('camera-canvas');
+        const cameraPreviewContainer = document.getElementById('camera-preview-container');
+        const downloadContainer = document.getElementById('download-container');
+        const downloadPhotosButton = document.getElementById('download-photos-button');
+        const downloadTimingsButton = document.getElementById('download-timings-button');
+        const photoModal = document.getElementById('photo-permission-modal');
+        const cameraErrorModal = document.getElementById('camera-error-modal');
+        const confirmPhotoYes = document.getElementById('confirm-photo-yes');
+        const confirmPhotoNo = document.getElementById('confirm-photo-no');
+        const closeCameraError = document.getElementById('close-camera-error');
+        const creditsLink = document.getElementById('credits-link');
+        const creditsModal = document.getElementById('credits-modal');
+        const closeCreditsModal = document.getElementById('close-credits-modal');
+        const photoPreviewModal = document.getElementById('photo-preview-modal');
+        const closePhotoPreview = document.getElementById('close-photo-preview');
+        const previewImage = document.getElementById('preview-image');
+        const previewTime = document.getElementById('preview-time');
+        const previewNumber = document.getElementById('preview-number');
+        const statsContainer = document.getElementById('stats-summary');
+        const totalTimesEl = document.getElementById('total-times');
+        const lastTimeEl = document.getElementById('last-time');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
 
-    window.showPhotoModal = function(imageSrc, name, time) {
-      if (!imageSrc) return;
-      photoImage.src = imageSrc;
-      photoCaption.textContent = `${name} — ${time}`;
-      photoModal.classList.remove('hidden');
-      photoModal.classList.add('flex');
-    };
+        // State Variables
+        let timer = null;
+        let startTime = 0;
+        let elapsedTime = 0;
+        let isRunning = false;
+        let lapCounter = 0;
+        let recordedTimes = [];
+        let cameraStream = null;
+        let capturePhotos = false;
+        let lastRecordTime = 0;
+        const RECORD_DEBOUNCE_MS = 500;
 
-    photoModal.addEventListener('click', () => {
-      photoModal.classList.add('hidden');
-      photoModal.classList.remove('flex');
-    });
+        // Event Listeners
+        downloadPhotosButton.addEventListener('click', downloadPhotosAsZip);
+        downloadTimingsButton.addEventListener('click', downloadTimingsAsTxt);
 
-    function download(format) {
-      if (!times.length) return;
-      const date = new Date().toISOString().slice(0,10);
-      if (format === 'txt' || format === 'csv') {
-        const sep = format === 'csv' ? ',' : ' ';
-        const text = times.map((r, i) => `${i+1}${sep}${r.participant}${sep}${fmt(r.time)}`).join('\n');
-        const blob = new Blob([text], { type: 'text/plain' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `phs_times_${date}.${format}`;
-        a.click();
-      } else if (format === 'zip') {
-        const zip = new JSZip();
-        times.filter(r=>r.img).forEach((r, i)=>{
-          zip.file(`${i+1}_${r.participant||'noid'}_${fmt(r.time).replace(/:/g,'-')}.jpg`, r.img.split(',')[1], {base64:true});
+        confirmPhotoYes.addEventListener('click', () => {
+            capturePhotos = true;
+            photoModal.classList.add('hidden');
+            showToast('Camera will be activated when you start');
         });
-        zip.generateAsync({type:'blob'}).then(content=>{
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(content);
-          a.download = `phs_photos_${date}.zip`;
-          a.click();
+
+        confirmPhotoNo.addEventListener('click', () => {
+            capturePhotos = false;
+            photoModal.classList.add('hidden');
+            showToast('Timer ready without photos');
         });
-      }
-    }
 
-    startBtn.onclick = start;
-    stopBtn.onclick = stop;
-    recordBtn.onclick = record;
-    downloadTxt.onclick = ()=>download('txt');
-    downloadCsv.onclick = ()=>download('csv');
-    downloadZip.onclick = ()=>download('zip');
+        closeCameraError.addEventListener('click', () => {
+            cameraErrorModal.classList.add('hidden');
+        });
 
-    render();
-  </script></body>
+        creditsLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            creditsModal.classList.remove('hidden');
+        });
+
+        closeCreditsModal.addEventListener('click', () => {
+            creditsModal.classList.add('hidden');
+        });
+
+        closePhotoPreview.addEventListener('click', () => {
+            photoPreviewModal.classList.add('hidden');
+        });
+
+        [photoModal, cameraErrorModal, creditsModal, photoPreviewModal].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+        });
+
+        window.addEventListener('beforeunload', (e) => {
+            if (isRunning || recordedTimes.length > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // Core Functions
+        async function startStopwatch() {
+            if (isRunning) return;
+
+            if (capturePhotos && !cameraStream) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            facingMode: 'environment',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        } 
+                    });
+                    cameraStreamElement.srcObject = stream;
+                    cameraStream = stream;
+                    showToast('Camera ready');
+                } catch (err) {
+                    console.error("Error accessing camera:", err);
+                    capturePhotos = false;
+                    cameraErrorModal.classList.remove('hidden');
+                }
+            }
+
+            startTime = Date.now() - elapsedTime;
+            timer = setInterval(updateDisplay, 10);
+            isRunning = true;
+            updateButtonStates();
+            showToast('Timer started');
+        }
+
+        function stopStopwatch() {
+            if (!isRunning) return;
+            
+            clearInterval(timer);
+            elapsedTime = Date.now() - startTime;
+            isRunning = false;
+            stopCameraStream();
+            updateButtonStates();
+            updateStats();
+            showToast('Timer stopped');
+        }
+        
+        function resetStopwatch() {
+            if (isRunning) return;
+            
+            clearInterval(timer);
+            stopCameraStream();
+            isRunning = false;
+            elapsedTime = 0;
+            startTime = 0;
+            lapCounter = 0;
+            recordedTimes = [];
+            lastRecordTime = 0;
+            stopwatchDisplay.innerHTML = `<span>00:00:00</span><span class="text-2xl sm:text-3xl text-gray-500">.00</span>`;
+            lapsList.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            statsContainer.classList.add('hidden');
+            photoModal.classList.remove('hidden');
+            updateButtonStates();
+            showToast('Timer reset');
+        }
+
+        function recordTime() {
+            if (!isRunning) return;
+            
+            const now = Date.now();
+            if (now - lastRecordTime < RECORD_DEBOUNCE_MS) {
+                return;
+            }
+            lastRecordTime = now;
+            
+            lapCounter++;
+            const totalTime = Date.now() - startTime;
+            let photoDataUrl = null;
+            
+            if (capturePhotos) {
+                try {
+                    photoDataUrl = capturePhoto();
+                } catch (err) {
+                    console.error("Error capturing photo:", err);
+                    showToast('Photo capture failed', 'error');
+                }
+            }
+
+            recordedTimes.push({ time: totalTime, image: photoDataUrl });
+
+            // Store the current index at the time of creation
+            const currentIndex = recordedTimes.length - 1;
+            const currentLapNumber = lapCounter;
+
+            const lapElement = document.createElement('li');
+            lapElement.className = 'flex items-center justify-between bg-gray-900 p-4 rounded-lg border border-gray-700 hover:border-blue-500 transition-all fade-in cursor-pointer';
+            lapElement.dataset.lapIndex = currentIndex;
+            
+            const leftSection = document.createElement('div');
+            leftSection.className = 'flex items-center gap-3';
+            
+            const lapNumberSpan = document.createElement('span');
+            lapNumberSpan.className = 'font-bold text-blue-400 text-lg';
+            lapNumberSpan.textContent = `#${currentLapNumber}`;
+            
+            const lapTimeSpan = document.createElement('span');
+            lapTimeSpan.className = 'font-semibold time-display text-white';
+            lapTimeSpan.textContent = formatTime(totalTime);
+
+            leftSection.appendChild(lapNumberSpan);
+            leftSection.appendChild(lapTimeSpan);
+
+            if (photoDataUrl) {
+                const photoIcon = document.createElement('span');
+                photoIcon.className = 'text-green-400 text-xs';
+                photoIcon.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                </svg>`;
+                leftSection.appendChild(photoIcon);
+                
+                // FIX: Use the captured values instead of dynamic calculation
+                lapElement.addEventListener('click', () => showPhotoPreview(currentIndex, currentLapNumber));
+            }
+
+            lapElement.appendChild(leftSection);
+            lapsList.prepend(lapElement);
+
+            emptyState.classList.add('hidden');
+            updateStats();
+
+            showToast(`Time ${currentLapNumber} recorded`);
+        }
+        
+        // Helper Functions
+        function capturePhoto() {
+            if (!cameraStream || !cameraStream.active) {
+                console.warn("Camera stream is not active. Cannot capture photo.");
+                return null;
+            }
+            try {
+                const context = cameraCanvasElement.getContext('2d');
+                cameraCanvasElement.width = cameraStreamElement.videoWidth;
+                cameraCanvasElement.height = cameraStreamElement.videoHeight;
+                context.drawImage(cameraStreamElement, 0, 0, cameraCanvasElement.width, cameraCanvasElement.height);
+                return cameraCanvasElement.toDataURL('image/jpeg', 0.7);
+            } catch (err) {
+                console.error("Error capturing photo:", err);
+                return null;
+            }
+        }
+
+        function showPhotoPreview(recordIndex, lapNumber) {
+            const record = recordedTimes[recordIndex];
+            if (!record || !record.image) return;
+            
+            previewImage.src = record.image;
+            previewTime.textContent = formatTime(record.time);
+            previewNumber.textContent = `#${lapNumber}`;
+            photoPreviewModal.classList.remove('hidden');
+        }
+
+        function stopCameraStream() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                cameraStreamElement.srcObject = null;
+            }
+        }
+
+        function updateDisplay() {
+            const currentTime = Date.now();
+            elapsedTime = currentTime - startTime;
+            stopwatchDisplay.innerHTML = formatTime(elapsedTime, true);
+        }
+        
+        function formatTime(timeInMillis, showMilliseconds = false) {
+            let totalMilliseconds = Math.max(0, timeInMillis);
+            let hours = Math.floor(totalMilliseconds / 3600000);
+            totalMilliseconds %= 3600000;
+            let minutes = Math.floor(totalMilliseconds / 60000);
+            totalMilliseconds %= 60000;
+            let seconds = Math.floor(totalMilliseconds / 1000);
+            let milliseconds = Math.floor((totalMilliseconds % 1000) / 10);
+
+            const pad = (num) => num.toString().padStart(2, '0');
+
+            if (showMilliseconds) {
+                return `<span>${pad(hours)}:${pad(minutes)}:${pad(seconds)}</span><span class="text-2xl sm:text-3xl text-gray-500">.${pad(milliseconds)}</span>`;
+            }
+            return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds)}`;
+        }
+
+        function updateStats() {
+            if (recordedTimes.length > 0) {
+                statsContainer.classList.remove('hidden');
+                totalTimesEl.textContent = recordedTimes.length;
+                lastTimeEl.textContent = formatTime(recordedTimes[recordedTimes.length - 1].time);
+            } else {
+                statsContainer.classList.add('hidden');
+            }
+        }
+
+        async function downloadPhotosAsZip() {
+            const photosToZip = recordedTimes.filter(r => r.image);
+            if (photosToZip.length === 0) {
+                showToast('No photos to download', 'error');
+                return;
+            }
+
+            const originalText = downloadPhotosButton.innerHTML;
+            downloadPhotosButton.innerHTML = '<svg class="animate-spin h-5 w-5 mx-auto" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+            downloadPhotosButton.disabled = true;
+            
+            try {
+                const zip = new JSZip();
+                photosToZip.forEach((record, index) => {
+                    const recordIndex = recordedTimes.findIndex(r => r === record);
+                    const base64Data = record.image.split(',')[1];
+                    const timeString = formatTime(record.time).replace(/:/g, '-');
+                    zip.file(`Time_${recordIndex + 1}_${timeString}.jpg`, base64Data, { base64: true });
+                });
+
+                const content = await zip.generateAsync({ type: "blob" });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                const timestamp = new Date().toISOString().slice(0, 10);
+                link.download = `stopwatch_photos_${timestamp}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+
+                showToast('Photos downloaded successfully');
+            } catch (err) {
+                console.error("Error creating zip file:", err);
+                showToast('Error downloading photos', 'error');
+            } finally {
+                downloadPhotosButton.innerHTML = originalText;
+                downloadPhotosButton.disabled = false;
+            }
+        }
+        
+        function downloadTimingsAsTxt() {
+            if (recordedTimes.length === 0) return;
+
+            const timestamp = new Date().toLocaleString();
+            const textToSave = `PHS Walk Run Timer - Recorded Times\nDate: ${timestamp}\n${'='.repeat(50)}\n\n` +
+                [...recordedTimes].reverse().map((record, index) => {
+                    return `Time ${index + 1}: ${formatTime(record.time)}`;
+                }).join('\n') +
+                `\n\n${'='.repeat(50)}\nTotal Times Recorded: ${recordedTimes.length}`;
+
+            const blob = new Blob([textToSave], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            const dateString = new Date().toISOString().slice(0, 10);
+            link.download = `stopwatch_timings_${dateString}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+
+            showToast('Timings downloaded successfully');
+        }
+
+        async function copyTimingsToClipboard() {
+            if (recordedTimes.length === 0) return;
+
+            const textToCopy = [...recordedTimes].reverse().map((record, index) => {
+                return `Time ${index + 1}: ${formatTime(record.time)}`;
+            }).join('\n');
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(textToCopy);
+                    showToast('Timings copied to clipboard');
+                } else {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = textToCopy;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showToast('Timings copied to clipboard');
+                }
+            } catch (err) {
+                console.error('Failed to copy timings: ', err);
+                showToast('Failed to copy timings', 'error');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            toastMessage.textContent = message;
+            toast.classList.remove('hidden', 'bg-gray-800', 'bg-red-600', 'bg-green-600');
+            
+            if (type === 'error') {
+                toast.classList.add('bg-red-600');
+            } else if (type === 'success') {
+                toast.classList.add('bg-green-600');
+            } else {
+                toast.classList.add('bg-gray-800');
+            }
+
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function updateButtonStates() {
+            if (isRunning) {
+                if(capturePhotos && cameraStream) {
+                    cameraPreviewContainer.classList.remove('hidden');
+                }
+                startButton.disabled = true;
+                startButton.classList.add('btn-disabled');
+                startButton.onclick = null;
+                
+                stopButton.disabled = false;
+                stopButton.classList.remove('btn-disabled');
+                stopButton.onclick = stopStopwatch;
+                
+                lapButton.disabled = false;
+                lapButton.classList.remove('btn-disabled');
+                lapButton.classList.add('scale-110');
+                lapButton.textContent = "Record";
+                lapButton.onclick = recordTime;
+                lapButton.classList.remove('bg-purple-600', 'hover:bg-purple-500', 'focus:ring-purple-400');
+                lapButton.classList.add('bg-blue-600', 'hover:bg-blue-500', 'focus:ring-blue-400');
+            } else {
+                cameraPreviewContainer.classList.add('hidden');
+                startButton.disabled = false;
+                startButton.classList.remove('btn-disabled');
+                lapButton.classList.remove('scale-110');
+
+                if (elapsedTime > 0) {
+                   startButton.textContent = "Reset";
+                   startButton.onclick = resetStopwatch;
+                } else {
+                   startButton.textContent = "Start";
+                   startButton.onclick = startStopwatch;
+                }
+                
+                stopButton.disabled = true;
+                stopButton.classList.add('btn-disabled');
+                stopButton.onclick = null;
+
+                if (recordedTimes.length > 0) {
+                    lapButton.disabled = false;
+                    lapButton.classList.remove('btn-disabled');
+                    lapButton.textContent = "Copy";
+                    lapButton.onclick = copyTimingsToClipboard;
+                    lapButton.classList.remove('bg-blue-600', 'hover:bg-blue-500', 'focus:ring-blue-400');
+                    lapButton.classList.add('bg-purple-600', 'hover:bg-purple-500', 'focus:ring-purple-400');
+                } else {
+                    lapButton.disabled = true;
+                    lapButton.classList.add('btn-disabled');
+                    lapButton.textContent = "Record";
+                    lapButton.onclick = null;
+                }
+            }
+
+            if (!isRunning && recordedTimes.length > 0) {
+                downloadContainer.classList.remove('hidden');
+                const hasPhotos = recordedTimes.some(r => r.image);
+                downloadPhotosButton.style.display = hasPhotos ? 'flex' : 'none';
+            } else {
+                downloadContainer.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch(e.key.toLowerCase()) {
+                case ' ':
+                case 's':
+                    e.preventDefault();
+                    if (!startButton.disabled) startButton.click();
+                    break;
+                case 'r':
+                case 'l':
+                    e.preventDefault();
+                    if (!lapButton.disabled) lapButton.click();
+                    break;
+                case 'x':
+                    e.preventDefault();
+                    if (!stopButton.disabled) stopButton.click();
+                    break;
+            }
+        });
+        
+        updateButtonStates();
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isRunning) {
+                elapsedTime = Date.now() - startTime;
+            } else if (!document.hidden && isRunning) {
+                startTime = Date.now() - elapsedTime;
+            }
+        });
+    </script>
+</body>
 </html>
