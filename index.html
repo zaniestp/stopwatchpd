@@ -478,12 +478,10 @@
         }
 
         function navigatePreview(direction) {
-            // direction: -1 for previous (☚ going back toward #1), +1 for next (☛ going forward toward later captures)
-            // We need to move in the opposite direction in the array because:
-            // - Array index increases as lap numbers increase (#1 at index 0, #2 at index 1, etc.)
-            // - Previous (☚) should go to smaller lap numbers (smaller index)
-            // - Next (☛) should go to larger lap numbers (larger index)
-            const newIndex = currentPreviewIndex - direction;
+            // direction: -1 for previous (☚ going to smaller lap numbers), +1 for next (☛ going to larger lap numbers)
+            // Since array index matches lap progression (index 0 = lap #1, index 1 = lap #2, etc.),
+            // we move in the same direction as the lap numbers
+            const newIndex = currentPreviewIndex + direction;
             
             // Validate bounds
             if (newIndex < 0 || newIndex >= recordedTimes.length) {
@@ -501,12 +499,15 @@
 
         function updateNavigationButtons() {
             const currentRecord = recordedTimes[currentPreviewIndex];
+            const largestLapNumber = recordedTimes[recordedTimes.length - 1].lapNumber;
             
-            // Disable previous (☚) button if at lap #1 (the first capture, index 0)
-            prevPhotoButton.disabled = currentPreviewIndex === 0;
+            // Disable left (☚) button when at lap #1 (smallest number)
+            prevPhotoButton.disabled = currentRecord.lapNumber === 1;
             
-            // Disable next (☛) button if at the last/latest lap (highest lap number, last index)
-            nextPhotoButton.disabled = currentPreviewIndex === recordedTimes.length - 1;
+            // Disable right (☛) button when at the largest lap number (last picture)
+            nextPhotoButton.disabled = currentRecord.lapNumber === largestLapNumber;
+            
+            // Both buttons enabled when picture number is neither 1 nor the largest
         }
 
         function stopCameraStream() {
