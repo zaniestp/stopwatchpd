@@ -1,0 +1,178 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PHS Walk Run Timer v1.2</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .time-display { font-family: 'Roboto Mono', monospace; font-size: 2.2rem; }
+    .btn-disabled { opacity: 0.5; cursor: not-allowed; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px);} to {opacity:1; transform: translateY(0);} }
+  </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+  <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-5 border border-gray-700">
+    <div class="text-center mb-5">
+      <h1 class="text-xl font-bold">PHS Walk Run Timer</h1>
+    </div><div id="camera-preview" class="hidden mb-3 rounded-xl overflow-hidden border border-green-500">
+  <video id="camera" autoplay playsinline class="w-full"></video>
+</div>
+
+<div class="text-center mb-5 bg-gray-900 p-3 rounded-lg border border-gray-700">
+  <h1 id="display" class="font-bold time-display">00:00:00.00</h1>
+</div>
+
+<div class="flex gap-2 justify-center mb-5 flex-wrap">
+  <button id="start" class="bg-green-600 hover:bg-green-500 rounded-full px-5 py-2 font-bold text-sm">Start</button>
+  <button id="record" class="bg-blue-600 hover:bg-blue-500 rounded-full px-5 py-2 font-bold text-sm btn-disabled" disabled>Record</button>
+  <button id="stop" class="bg-red-600 hover:bg-red-500 rounded-full px-5 py-2 font-bold text-sm btn-disabled" disabled>Stop</button>
+</div>
+
+<div class="mb-3">
+  <label class="text-xs text-gray-400">Participant Name / ID:</label>
+  <input id="participant" class="w-full mt-1 p-1.5 rounded-lg bg-gray-900 border border-gray-700 text-white focus:outline-none text-sm" placeholder="Optional: e.g., Bib 45" />
+</div>
+
+<ul id="records" class="space-y-1 max-h-60 overflow-y-auto mb-3 text-sm"></ul>
+
+<div class="flex flex-col sm:flex-row justify-center gap-2">
+  <button id="downloadTxt" class="bg-teal-600 hover:bg-teal-500 px-4 py-2 rounded-lg font-semibold text-sm hidden">Download TXT</button>
+  <button id="downloadCsv" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg font-semibold text-sm hidden">Download CSV</button>
+  <button id="downloadZip" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg font-semibold text-sm hidden">Download Photos</button>
+</div>
+
+  </div>  <script>
+    const display = document.getElementById('display');
+    const startBtn = document.getElementById('start');
+    const recordBtn = document.getElementById('record');
+    const stopBtn = document.getElementById('stop');
+    const records = document.getElementById('records');
+    const participantInput = document.getElementById('participant');
+    const downloadTxt = document.getElementById('downloadTxt');
+    const downloadCsv = document.getElementById('downloadCsv');
+    const downloadZip = document.getElementById('downloadZip');
+    const cameraPreview = document.getElementById('camera-preview');
+    const cameraEl = document.getElementById('camera');
+
+    let startTime = 0, elapsed = 0, running = false, capture = false;
+    let stream = null;
+    let times = JSON.parse(localStorage.getItem('phsTimes') || '[]');
+
+    function fmt(ms) {
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      const cs = Math.floor((ms % 1000) / 10);
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+    }
+
+    function updateDisplay() {
+      if (running) {
+        display.textContent = fmt(Date.now() - startTime);
+        requestAnimationFrame(updateDisplay);
+      }
+    }
+
+    async function start() {
+      if (running) return;
+      startBtn.disabled = true;
+      recordBtn.disabled = stopBtn.disabled = false;
+      recordBtn.classList.remove('btn-disabled');
+      stopBtn.classList.remove('btn-disabled');
+      running = true;
+      startTime = Date.now() - elapsed;
+      updateDisplay();
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        cameraEl.srcObject = stream;
+        await new Promise(r => cameraEl.onloadedmetadata = r);
+        cameraPreview.classList.remove('hidden');
+        capture = true;
+      } catch {
+        capture = false;
+      }
+    }
+
+    function stop() {
+      running = false;
+      elapsed = Date.now() - startTime;
+      recordBtn.disabled = stopBtn.disabled = true;
+      recordBtn.classList.add('btn-disabled');
+      stopBtn.classList.add('btn-disabled');
+      startBtn.disabled = false;
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      cameraPreview.classList.add('hidden');
+    }
+
+    function record() {
+      if (!running) return;
+      const t = Date.now() - startTime;
+      const participant = participantInput.value.trim();
+      let img = null;
+      if (capture && stream) {
+        const c = document.createElement('canvas');
+        c.width = cameraEl.videoWidth;
+        c.height = cameraEl.videoHeight;
+        c.getContext('2d').drawImage(cameraEl, 0, 0);
+        img = c.toDataURL('image/jpeg', 0.85);
+      }
+      const entry = { time: t, participant, img };
+      times.unshift(entry);
+      localStorage.setItem('phsTimes', JSON.stringify(times));
+      render();
+    }
+
+    function render() {
+      records.innerHTML = times.map((r, i) => `
+        <li class='fade-in p-1.5 bg-gray-900 border border-gray-700 rounded-lg flex justify-between items-center'>
+          <div><strong>#${times.length - i}</strong> ${r.participant ? '(' + r.participant + ') ' : ''}${fmt(r.time)}</div>
+          ${r.img ? '<span class="text-green-400">📷</span>' : ''}
+        </li>`).join('');
+      const hasData = times.length > 0;
+      downloadTxt.classList.toggle('hidden', !hasData);
+      downloadCsv.classList.toggle('hidden', !hasData);
+      downloadZip.classList.toggle('hidden', !times.some(r => r.img));
+    }
+
+    function download(format) {
+      if (!times.length) return;
+      const date = new Date().toISOString().slice(0,10);
+      if (format === 'txt' || format === 'csv') {
+        const sep = format === 'csv' ? ',' : ' ';
+        const text = times.map((r, i) => `${i+1}${sep}${r.participant || ''}${sep}${fmt(r.time)}`).join('\n');
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `phs_times_${date}.${format}`;
+        a.click();
+      } else if (format === 'zip') {
+        const zip = new JSZip();
+        times.filter(r=>r.img).forEach((r, i)=>{
+          zip.file(`${i+1}_${r.participant||'noid'}_${fmt(r.time).replace(/:/g,'-')}.jpg`, r.img.split(',')[1], {base64:true});
+        });
+        zip.generateAsync({type:'blob'}).then(content=>{
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(content);
+          a.download = `phs_photos_${date}.zip`;
+          a.click();
+        });
+      }
+    }
+
+    startBtn.onclick = start;
+    stopBtn.onclick = stop;
+    recordBtn.onclick = record;
+    downloadTxt.onclick = ()=>download('txt');
+    downloadCsv.onclick = ()=>download('csv');
+    downloadZip.onclick = ()=>download('zip');
+
+    render();
+  </script></body>
+</html>
