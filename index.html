@@ -127,17 +127,11 @@
                 </div>
                 <!-- Navigation Buttons -->
                 <div class="flex justify-between items-center gap-3">
-                    <button id="prev-photo-button" class="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-500 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                        </svg>
-                        Previous
+                    <button id="prev-photo-button" class="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-500 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 text-2xl">
+                        ☚
                     </button>
-                    <button id="next-photo-button" class="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-500 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2">
-                        Next
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
+                    <button id="next-photo-button" class="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-500 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 text-2xl">
+                        ☛
                     </button>
                 </div>
             </div>
@@ -410,13 +404,14 @@
 
             recordedTimes.push({ time: totalTime, image: photoDataUrl });
 
-            // Store the current index at the time of creation
+            // Store the current index and lap number at the time of creation
             const currentIndex = recordedTimes.length - 1;
             const currentLapNumber = lapCounter;
 
             const lapElement = document.createElement('li');
             lapElement.className = 'flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-600 hover:border-blue-500 transition-all fade-in cursor-pointer';
             lapElement.dataset.lapIndex = currentIndex;
+            lapElement.dataset.lapNumber = currentLapNumber;
             
             const leftSection = document.createElement('div');
             leftSection.className = 'flex items-center gap-3';
@@ -483,21 +478,17 @@
         }
 
         function navigatePreview(direction) {
-            const newIndex = currentPreviewIndex + direction;
+            // direction: -1 for previous (going back to #1), +1 for next (going forward)
+            const newIndex = currentPreviewIndex - direction;
             
             // Validate bounds
             if (newIndex < 0 || newIndex >= recordedTimes.length) {
                 return;
             }
             
-            // Find the lap number for this record
-            let lapNumber = 1;
-            for (let i = 0; i < recordedTimes.length; i++) {
-                if (i === newIndex) {
-                    lapNumber = recordedTimes.length - i;
-                    break;
-                }
-            }
+            // Calculate the lap number based on the array position
+            // Since newest records are at the end of the array, lap number decreases as index increases
+            const lapNumber = recordedTimes.length - newIndex;
             
             currentPreviewIndex = newIndex;
             const record = recordedTimes[newIndex];
@@ -509,10 +500,13 @@
         }
 
         function updateNavigationButtons() {
-            // Disable previous button if at first record (index 0)
-            prevPhotoButton.disabled = currentPreviewIndex === 0;
+            // Calculate current lap number
+            const currentLapNumber = recordedTimes.length - currentPreviewIndex;
             
-            // Disable next button if at last record
+            // Disable previous (☚) button if at lap #1 (highest index in array)
+            prevPhotoButton.disabled = currentLapNumber === 1;
+            
+            // Disable next (☛) button if at the last/latest lap (index 0 in array)
             nextPhotoButton.disabled = currentPreviewIndex === recordedTimes.length - 1;
         }
 
