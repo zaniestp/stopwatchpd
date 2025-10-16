@@ -134,13 +134,13 @@
 
     <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-gray-700 relative">
         <!-- Header -->
-        <div class="text-center mb-6">
+        <div class="text-center mb-4">
             <h1 class="text-xl font-bold text-gray-300">PHS Walk Run Timer</h1>
         </div>
 
         <!-- Camera Preview Frame -->
-        <div id="camera-preview-container" class="mb-6 rounded-xl overflow-hidden hidden border-2 border-green-500 shadow-lg relative">
-            <video id="camera-stream" autoplay playsinline class="w-full h-auto block"></video>
+        <div id="camera-preview-container" class="mb-4 rounded-xl overflow-hidden hidden border-2 border-green-500 shadow-lg relative" style="max-height: 200px;">
+            <video id="camera-stream" autoplay playsinline class="w-full h-auto block" style="max-height: 200px; object-fit: cover;"></video>
             <div class="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 pulse-ring">
                 <span class="w-2 h-2 bg-white rounded-full"></span>
                 REC
@@ -148,60 +148,51 @@
         </div>
 
         <!-- Stopwatch Display -->
-        <div class="text-center mb-8 bg-gray-900 rounded-xl p-6 border border-gray-700 mx-2">
+        <div class="text-center mb-6 bg-gray-900 rounded-xl p-4 border border-gray-700">
             <h1 class="text-4xl sm:text-5xl font-bold time-display tracking-wider flex items-baseline justify-center" id="stopwatch-display">
                 <span>00:00:00</span><span class="text-2xl sm:text-3xl text-gray-500">.00</span>
             </h1>
         </div>
 
         <!-- Control Buttons -->
-        <div class="flex justify-center items-center gap-4 mb-8">
-            <button id="start-button" class="w-24 h-24 rounded-full bg-green-600 hover:bg-green-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl">
+        <div class="flex justify-center items-center gap-4 mb-6">
+            <button id="start-button" class="w-20 h-20 rounded-full bg-green-600 hover:bg-green-500 text-white text-base font-bold focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl">
                 Start
             </button>
-            <button id="lap-button" class="w-28 h-28 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl btn-disabled" disabled>
+            <button id="lap-button" class="w-24 h-24 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-base font-bold focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl btn-disabled" disabled>
                 Record
             </button>
-            <button id="stop-button" class="w-24 h-24 rounded-full bg-red-600 hover:bg-red-500 text-white text-lg font-bold focus:outline-none focus:ring-4 focus:ring-red-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl btn-disabled" disabled>
+            <button id="stop-button" class="w-20 h-20 rounded-full bg-red-600 hover:bg-red-500 text-white text-base font-bold focus:outline-none focus:ring-4 focus:ring-red-400 transition-all duration-200 active:scale-95 flex items-center justify-center shadow-xl btn-disabled" disabled>
                 Stop
             </button>
         </div>
 
-        <!-- Stats Summary -->
-        <div id="stats-summary" class="hidden mb-6 grid grid-cols-2 gap-3">
-            <div class="bg-gray-900 rounded-lg p-3 border border-gray-700">
-                <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Total Times</div>
-                <div id="total-times" class="text-2xl font-bold text-white">0</div>
+        <!-- Recorded Times Frame -->
+        <div class="bg-gray-900 rounded-xl border border-gray-700 p-4 mb-4">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Recorded Times</h2>
+            <div id="laps-container" class="w-full max-h-64 overflow-y-auto pr-2">
+                <div id="empty-state" class="text-center py-8 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p class="text-xs">No times recorded yet</p>
+                </div>
+                <ul id="laps-list" class="space-y-2">
+                    <!-- Recorded times will be injected here by JavaScript -->
+                </ul>
             </div>
-            <div class="bg-gray-900 rounded-lg p-3 border border-gray-700">
-                <div class="text-gray-400 text-xs uppercase tracking-wide mb-1">Last Time</div>
-                <div id="last-time" class="text-lg font-semibold text-white time-display">--:--:--.--</div>
-            </div>
-        </div>
-
-        <!-- Laps Display -->
-        <div id="laps-container" class="w-full max-h-80 overflow-y-auto pr-2">
-            <div id="empty-state" class="text-center py-12 text-gray-500">
-                <svg class="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <p class="text-sm">No times recorded yet</p>
-            </div>
-            <ul id="laps-list" class="space-y-2">
-                <!-- Recorded times will be injected here by JavaScript -->
-            </ul>
         </div>
 
         <!-- Download Buttons Container -->
-        <div id="download-container" class="mt-6 hidden flex flex-col sm:flex-row justify-center gap-3">
-            <button id="download-photos-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-200 active:scale-95 shadow-lg flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div id="download-container" class="hidden flex flex-col sm:flex-row justify-center gap-3">
+            <button id="download-photos-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 transition-all duration-200 active:scale-95 shadow-lg flex items-center justify-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
                 Download Photos
             </button>
-            <button id="download-timings-button" class="bg-teal-600 hover:bg-teal-500 text-white font-semibold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-400 transition-all duration-200 active:scale-95 shadow-lg flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="download-timings-button" class="bg-teal-600 hover:bg-teal-500 text-white font-semibold py-2 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-400 transition-all duration-200 active:scale-95 shadow-lg flex items-center justify-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
                 Download Timings
@@ -246,9 +237,6 @@
         const previewImage = document.getElementById('preview-image');
         const previewTime = document.getElementById('preview-time');
         const previewNumber = document.getElementById('preview-number');
-        const statsContainer = document.getElementById('stats-summary');
-        const totalTimesEl = document.getElementById('total-times');
-        const lastTimeEl = document.getElementById('last-time');
         const toast = document.getElementById('toast');
         const toastMessage = document.getElementById('toast-message');
 
@@ -350,7 +338,6 @@
             isRunning = false;
             stopCameraStream();
             updateButtonStates();
-            updateStats();
             showToast('Timer stopped');
         }
         
@@ -368,7 +355,6 @@
             stopwatchDisplay.innerHTML = `<span>00:00:00</span><span class="text-2xl sm:text-3xl text-gray-500">.00</span>`;
             lapsList.innerHTML = '';
             emptyState.classList.remove('hidden');
-            statsContainer.classList.add('hidden');
             photoModal.classList.remove('hidden');
             updateButtonStates();
             showToast('Timer reset');
@@ -403,18 +389,18 @@
             const currentLapNumber = lapCounter;
 
             const lapElement = document.createElement('li');
-            lapElement.className = 'flex items-center justify-between bg-gray-900 p-4 rounded-lg border border-gray-700 hover:border-blue-500 transition-all fade-in cursor-pointer';
+            lapElement.className = 'flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-600 hover:border-blue-500 transition-all fade-in cursor-pointer';
             lapElement.dataset.lapIndex = currentIndex;
             
             const leftSection = document.createElement('div');
             leftSection.className = 'flex items-center gap-3';
             
             const lapNumberSpan = document.createElement('span');
-            lapNumberSpan.className = 'font-bold text-blue-400 text-lg';
+            lapNumberSpan.className = 'font-bold text-blue-400 text-base';
             lapNumberSpan.textContent = `#${currentLapNumber}`;
             
             const lapTimeSpan = document.createElement('span');
-            lapTimeSpan.className = 'font-semibold time-display text-white';
+            lapTimeSpan.className = 'font-semibold time-display text-white text-sm';
             lapTimeSpan.textContent = formatTime(totalTime);
 
             leftSection.appendChild(lapNumberSpan);
@@ -423,12 +409,12 @@
             if (photoDataUrl) {
                 const photoIcon = document.createElement('span');
                 photoIcon.className = 'text-green-400 text-xs';
-                photoIcon.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                photoIcon.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
                 </svg>`;
                 leftSection.appendChild(photoIcon);
                 
-                // FIX: Use the captured values instead of dynamic calculation
+                // Use the captured values instead of dynamic calculation
                 lapElement.addEventListener('click', () => showPhotoPreview(currentIndex, currentLapNumber));
             }
 
@@ -436,7 +422,6 @@
             lapsList.prepend(lapElement);
 
             emptyState.classList.add('hidden');
-            updateStats();
 
             showToast(`Time ${currentLapNumber} recorded`);
         }
@@ -500,16 +485,6 @@
             return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds)}`;
         }
 
-        function updateStats() {
-            if (recordedTimes.length > 0) {
-                statsContainer.classList.remove('hidden');
-                totalTimesEl.textContent = recordedTimes.length;
-                lastTimeEl.textContent = formatTime(recordedTimes[recordedTimes.length - 1].time);
-            } else {
-                statsContainer.classList.add('hidden');
-            }
-        }
-
         async function downloadPhotosAsZip() {
             const photosToZip = recordedTimes.filter(r => r.image);
             if (photosToZip.length === 0) {
@@ -518,7 +493,7 @@
             }
 
             const originalText = downloadPhotosButton.innerHTML;
-            downloadPhotosButton.innerHTML = '<svg class="animate-spin h-5 w-5 mx-auto" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+            downloadPhotosButton.innerHTML = '<svg class="animate-spin h-4 w-4 mx-auto" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
             downloadPhotosButton.disabled = true;
             
             try {
